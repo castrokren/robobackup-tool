@@ -9,9 +9,12 @@ from datetime import datetime
 try:
     import win32wnet
     import win32netcon
+    WIN32_AVAILABLE = True
 except ImportError:
     win32wnet = None
     win32netcon = None
+    WIN32_AVAILABLE = False
+    print("Warning: pywin32 not available. Network drive mapping will be disabled.")
 
 
 def is_unc_path(path: str) -> bool:
@@ -55,9 +58,9 @@ def map_network_drive(unc_path, username, password, temporary=False, logger=None
     """
     Map a network drive and return the drive letter. Returns None if mapping fails or not on Windows.
     """
-    if not win32wnet or not win32netcon:
+    if not WIN32_AVAILABLE:
         if logger:
-            logger.warning("win32wnet/win32netcon not available; skipping drive mapping.")
+            logger.warning("pywin32 not available; skipping drive mapping.")
         return None
     if not is_unc_path(unc_path):
         return None
@@ -98,9 +101,9 @@ def unmap_network_drive(drive_letter, logger=None):
     """
     Unmap a network drive by drive letter. Returns True if unmapped, False otherwise.
     """
-    if not win32wnet:
+    if not WIN32_AVAILABLE:
         if logger:
-            logger.warning("win32wnet not available; skipping unmap.")
+            logger.warning("pywin32 not available; skipping unmap.")
         return False
     try:
         win32wnet.WNetCancelConnection2(drive_letter, 0, True)
