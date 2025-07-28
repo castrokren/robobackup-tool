@@ -1,5 +1,4 @@
 # Core dependencies
-tkinter  # Usually included with Python on Windows
 pywin32>=306
 cryptography>=3.4.8
 requests>=2.28.0
