@@ -2083,18 +2083,42 @@ class BackupApp:
     def check_for_updates(self):
         """Check for updates securely"""
         try:
-            # For now, just log that updates are not implemented
-            self.log_message("Update checking is not implemented in this version", 'info')
-            return False
+            # Use the update checker to check for updates
+            update_info = self.update_checker.check_for_updates()
+            
+            if update_info.get('available'):
+                self.log_message(f"Update available: {update_info['version']}", 'info')
+                return True
+            else:
+                self.log_message("No updates available", 'info')
+                return False
+                
         except Exception as e:
             self.log_message(f"Error checking for updates: {str(e)}", 'error')
             return False
 
     def perform_update(self):
-        """Perform secure update"""
+        """Perform Notepad++-style update"""
         try:
-            self.log_message("Updates are not implemented in this version", 'info')
-            return False
+            # Check for updates first
+            update_info = self.update_checker.check_for_updates()
+            
+            if not update_info.get('available'):
+                self.log_message("No updates available", 'info')
+                return False
+            
+            # Perform the Notepad++-style update
+            success = self.update_checker.perform_notepad_style_update(update_info)
+            
+            if success:
+                self.log_message("Update downloaded. Application will restart with new version.", 'success')
+                # Exit the application to allow the restart script to take over
+                self.root.after(2000, self.root.quit)  # Exit after 2 seconds
+                return True
+            else:
+                self.log_message("Update failed", 'error')
+                return False
+                
         except Exception as e:
             self.log_message(f"Error performing update: {str(e)}", 'error')
             return False

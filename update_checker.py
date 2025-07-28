@@ -2,6 +2,7 @@
 """
 Update Checker for RoboBackup Tool
 Checks for updates from GitHub releases and handles automatic updates
+Notepad++-style update system for packaged executables
 """
 
 import requests
@@ -11,8 +12,10 @@ import sys
 import subprocess
 import zipfile
 import shutil
+import tempfile
 from pathlib import Path
 import logging
+import time
 
 class UpdateChecker:
     def __init__(self, repo_owner="castrokren", repo_name="robobackup-tool"):
@@ -61,8 +64,98 @@ class UpdateChecker:
         
         return 0
     
+    def find_executable_asset(self, assets):
+        """Find the executable asset in release assets"""
+        for asset in assets:
+            if asset['name'].endswith('.exe'):
+                return asset
+        return None
+    
+    def download_executable_update(self, assets, target_dir="updates"):
+        """Download the executable update (Notepad++ style)"""
+        try:
+            # Find the executable asset
+            exe_asset = self.find_executable_asset(assets)
+            if not exe_asset:
+                self.logger.error("No executable asset found in release")
+                return None
+            
+            # Create updates directory
+            os.makedirs(target_dir, exist_ok=True)
+            
+            # Download the executable
+            download_url = exe_asset['browser_download_url']
+            response = requests.get(download_url, stream=True)
+            response.raise_for_status()
+            
+            # Save to file
+            filename = exe_asset['name']
+            filepath = os.path.join(target_dir, filename)
+            
+            with open(filepath, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            self.logger.info(f"Downloaded update: {filepath}")
+            return filepath
+            
+        except Exception as e:
+            self.logger.error(f"Error downloading executable update: {e}")
+            return None
+    
+    def create_restart_script(self, new_exe_path, current_exe_path):
+        """Create a script to handle the executable replacement and restart"""
+        script_content = f'''@echo off
+echo Waiting for application to close...
+timeout /t 2 /nobreak >nul
+
+echo Replacing executable...
+copy "{new_exe_path}" "{current_exe_path}" /Y
+
+echo Starting updated application...
+start "" "{current_exe_path}"
+
+echo Cleaning up...
+del "{new_exe_path}"
+del "%~f0"
+
+echo Update completed!
+'''
+        
+        # Create temporary batch file
+        temp_script = os.path.join(os.path.dirname(current_exe_path), "update_restart.bat")
+        with open(temp_script, 'w') as f:
+            f.write(script_content)
+        
+        return temp_script
+    
+    def perform_notepad_style_update(self, update_info):
+        """Perform Notepad++-style update by downloading new executable"""
+        try:
+            # Get current executable path
+            current_exe_path = sys.executable if getattr(sys, 'frozen', False) else sys.argv[0]
+            
+            # Download new executable
+            new_exe_path = self.download_executable_update(update_info['assets'])
+            if not new_exe_path:
+                return False
+            
+            # Create restart script
+            restart_script = self.create_restart_script(new_exe_path, current_exe_path)
+            
+            # Execute restart script
+            subprocess.Popen([restart_script], shell=True)
+            
+            # Exit current application
+            self.logger.info("Update downloaded. Application will restart with new version.")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error performing Notepad++-style update: {e}")
+            return False
+    
     def download_update(self, download_url, target_dir="updates"):
-        """Download the latest release"""
+        """Download the latest release (legacy method)"""
         try:
             # Create updates directory
             os.makedirs(target_dir, exist_ok=True)
@@ -86,7 +179,7 @@ class UpdateChecker:
             return None
     
     def install_update(self, update_file):
-        """Install the downloaded update"""
+        """Install the downloaded update (legacy method)"""
         try:
             # Extract the update
             with zipfile.ZipFile(update_file, 'r') as zip_ref:
@@ -181,6 +274,15 @@ def main():
     if update_info.get('available'):
         print(f"New version available: {update_info['version']}")
         print(f"Release notes: {update_info.get('release_notes', 'No release notes')}")
+        
+        # Test Notepad++-style update
+        if update_info.get('assets'):
+            print("Testing Notepad++-style update...")
+            success = checker.perform_notepad_style_update(update_info)
+            if success:
+                print("Update process initiated successfully!")
+            else:
+                print("Update process failed.")
     else:
         print("No updates available.")
         if update_info.get('error'):
