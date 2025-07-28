@@ -27,19 +27,27 @@ def is_unc_path(path: str) -> bool:
 def normalize_unc_path(path):
     """
     Normalize a path to use backslashes and ensure UNC paths start with double backslashes.
+    Only affects UNC paths, leaves local paths unchanged.
     """
     if not path:
         return path
-    path = path.replace('/', '\\')
-    if path.startswith('\\\\'):
-        return path
-    elif path.startswith('\\'):
-        return '\\' + path.lstrip('\\')
-    elif path.startswith('\\\\?\\UNC\\'):
-        return path
-    elif path.startswith('//'):
-        return '\\' + path.lstrip('/').replace('/', '\\')
+    
+    # Check if this is a UNC path before any conversion
+    is_unc = path.startswith('\\\\') or path.startswith('//') or path.startswith('\\') or path.startswith('\\\\?\\UNC\\')
+    
+    if is_unc:
+        # Convert forward slashes to backslashes for UNC paths
+        path = path.replace('/', '\\')
+        if path.startswith('\\\\'):
+            return path
+        elif path.startswith('\\'):
+            return '\\\\' + path.lstrip('\\')
+        elif path.startswith('\\\\?\\UNC\\'):
+            return path
+        else:
+            return path
     else:
+        # For local paths, leave unchanged
         return path
 
 
