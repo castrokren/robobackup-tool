@@ -55,6 +55,7 @@ jobs:
         pip install pywin32 --timeout 300 --retries 3 || echo "pywin32 installation failed (expected in some environments)"
         pip install pyinstaller --timeout 300 --retries 3 || echo "pyinstaller installation failed"
         pip install flake8 --timeout 300 --retries 3 || echo "flake8 installation failed"
+        pip install cryptography --timeout 300 --retries 3 || echo "cryptography installation failed"
         echo "Optional dependencies installation completed"
     
     - name: Show installed packages
@@ -75,6 +76,7 @@ jobs:
         python -c "import win32wnet; print('win32wnet imported successfully')" || echo "win32wnet not available"
         python -c "import win32netcon; print('win32netcon imported successfully')" || echo "win32netcon not available"
         python -c "import cryptography; print('cryptography imported successfully')" || echo "cryptography not available"
+        echo "Import testing completed"
     
     - name: Run diagnostic script
       run: |
