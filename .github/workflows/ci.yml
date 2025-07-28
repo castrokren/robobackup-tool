@@ -53,9 +53,10 @@ jobs:
       run: |
         echo "=== Installing Optional Dependencies ==="
         pip install pywin32 --timeout 300 --retries 3 || echo "pywin32 installation failed (expected in some environments)"
-        pip install pyinstaller --timeout 300 --retries 3 || echo "pyinstaller installation failed"
         pip install flake8 --timeout 300 --retries 3 || echo "flake8 installation failed"
         pip install cryptography --timeout 300 --retries 3 || echo "cryptography installation failed"
+        echo "PyInstaller installation (optional - may timeout in CI)"
+        pip install pyinstaller --timeout 600 --retries 2 || echo "pyinstaller installation failed (will skip build step)"
         echo "Optional dependencies installation completed"
     
     - name: Show installed packages
@@ -111,6 +112,11 @@ jobs:
         echo "=== Building Executable ==="
         # Only build if we're on the main branch or it's a PR
         if ("${{ github.ref }}" -eq "refs/heads/main" -or "${{ github.event_name }}" -eq "pull_request") {
+          echo "Checking if PyInstaller is available..."
+          python -c "import PyInstaller; print('PyInstaller available')" || {
+            echo "PyInstaller not available, skipping build"
+            exit 0
+          }
           echo "Building executable..."
           pyinstaller --onefile --windowed main.py || echo "Build failed, but continuing..."
         } else {
