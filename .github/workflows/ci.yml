@@ -79,6 +79,7 @@ jobs:
     - name: Run diagnostic script
       run: |
         echo "=== Running Diagnostic Script ==="
+        echo "Using new ci_diagnostics.py script (no Unicode characters)"
         python ci_diagnostics.py
     
     - name: Run basic tests first
