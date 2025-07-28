@@ -7,6 +7,7 @@ These tests should pass even in minimal CI environments
 import unittest
 import sys
 import os
+import tempfile
 
 
 class TestCIEnvironment(unittest.TestCase):
