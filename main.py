@@ -9,13 +9,12 @@ logger = logging.getLogger(__name__)
 def check_for_updates():
     """Check for updates on startup"""
     try:
-        from update_checker import UpdateChecker
-        checker = UpdateChecker()
-        update_info = checker.check_for_updates()
+        from update_gui import check_for_updates_gui
+        result = check_for_updates_gui()
         
-        if update_info.get('available'):
-            logger.info(f"Update available: {update_info['version']}")
-            return update_info
+        if result:
+            logger.info(f"Update dialog result: {result}")
+            return result
         else:
             logger.info("No updates available")
             return None
@@ -26,8 +25,8 @@ def check_for_updates():
 
 def main():
     """Main application entry point"""
-    # Check for updates
-    update_info = check_for_updates()
+    # Check for updates (GUI dialog will show if updates are available)
+    update_result = check_for_updates()
     
     if len(sys.argv) > 1 and sys.argv[1] == "service":
         # Run as service
