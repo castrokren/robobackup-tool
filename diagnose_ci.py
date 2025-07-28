@@ -30,9 +30,9 @@ def main():
     for module in basic_modules:
         try:
             __import__(module)
-            print(f"✓ {module} imported successfully")
+            print(f"[OK] {module} imported successfully")
         except ImportError as e:
-            print(f"✗ {module} import failed: {e}")
+            print(f"[FAIL] {module} import failed: {e}")
     
     # Test optional imports
     print("\n=== Testing Optional Imports ===")
@@ -40,9 +40,9 @@ def main():
     for module in optional_modules:
         try:
             __import__(module)
-            print(f"✓ {module} imported successfully")
+            print(f"[OK] {module} imported successfully")
         except ImportError as e:
-            print(f"✗ {module} import failed: {e}")
+            print(f"[FAIL] {module} import failed: {e}")
     
     # Test file operations
     print("\n=== Testing File Operations ===")
@@ -56,21 +56,21 @@ def main():
             content = f.read()
         
         os.unlink(temp_file)
-        print("✓ File operations successful")
+        print("[OK] File operations successful")
     except Exception as e:
-        print(f"✗ File operations failed: {e}")
+        print(f"[FAIL] File operations failed: {e}")
     
     # Test directory listing
     print("\n=== Testing Directory Operations ===")
     try:
         files = os.listdir('.')
-        print(f"✓ Directory listing successful, found {len(files)} items")
+        print(f"[OK] Directory listing successful, found {len(files)} items")
         for file in files[:5]:  # Show first 5 files
             print(f"  - {file}")
         if len(files) > 5:
             print(f"  ... and {len(files) - 5} more")
     except Exception as e:
-        print(f"✗ Directory listing failed: {e}")
+        print(f"[FAIL] Directory listing failed: {e}")
     
     print("\n=== Diagnostics Complete ===")
 
