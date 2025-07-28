@@ -776,9 +776,6 @@ class BackupApp:
         # Refresh protection status after GUI is built
         self.refresh_protection_status()
         
-        # Load settings after GUI is built
-        self.load_settings()
-        
         # Initialize secure logging
         self.log_manager = SecureLogManager(self)
         
@@ -794,6 +791,9 @@ class BackupApp:
             
             # Initialize settings manager
             self.settings_manager = SettingsManager(self)
+            
+            # Load settings after settings manager is initialized
+            self.load_settings()
             
             # Initialize security components
             self.security_manager = SecurityManager()
