@@ -58,9 +58,14 @@ jobs:
         pip install flake8 --timeout 300 --retries 3 || echo "flake8 installation failed (will skip linting)"
         echo "Installing cryptography..."
         pip install cryptography --timeout 300 --retries 3 || echo "cryptography installation failed"
-        echo "Installing PyInstaller (optional - may timeout)..."
-        pip install pyinstaller --timeout 300 --retries 1 || echo "pyinstaller installation failed (will skip build step)"
         echo "Optional dependencies installation completed"
+    
+    - name: Install PyInstaller (optional)
+      run: |
+        echo "=== Installing PyInstaller (Optional) ==="
+        echo "Attempting to install PyInstaller (may timeout)..."
+        pip install pyinstaller --timeout 300 --retries 1 || echo "PyInstaller installation failed - build step will be skipped"
+        echo "PyInstaller installation attempt completed"
     
     - name: Show installed packages
       run: |
