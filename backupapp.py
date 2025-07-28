@@ -47,6 +47,25 @@ import binascii
 import getpass
 from tkinter.simpledialog import askstring
 
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle datetime objects"""
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+def datetime_decoder(obj):
+    """Custom JSON decoder to handle datetime objects"""
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if isinstance(value, str):
+                try:
+                    # Try to parse as ISO format datetime
+                    obj[key] = datetime.fromisoformat(value)
+                except ValueError:
+                    pass
+    return obj
+
 # Set scalable default font for Tkinter
 try:
     import tkinter.font as tkFont
@@ -471,12 +490,12 @@ class SettingsManager:
             os.makedirs(os.path.dirname(self.settings_file), exist_ok=True)
             if self.encryption_key:
                 f = Fernet(self.encryption_key)
-                encrypted_data = f.encrypt(json.dumps(settings).encode())
+                encrypted_data = f.encrypt(json.dumps(settings, cls=DateTimeEncoder).encode())
                 with open(self.settings_file, 'wb') as f:
                     f.write(encrypted_data)
             else:
                 with open(self.settings_file, 'w') as f:
-                    json.dump(settings, f, indent=2)
+                    json.dump(settings, f, indent=2, cls=DateTimeEncoder)
             return True
         except Exception as e:
             self.app.log_message(f"Error saving settings: {str(e)}")
@@ -493,10 +512,12 @@ class SettingsManager:
                     encrypted_data = f.read()
                 f = Fernet(self.encryption_key)
                 decrypted_data = f.decrypt(encrypted_data)
-                return json.loads(decrypted_data)
+                settings = json.loads(decrypted_data, object_hook=datetime_decoder)
+                return settings
             else:
                 with open(self.settings_file, 'r') as f:
-                    return json.load(f)
+                    settings = json.load(f, object_hook=datetime_decoder)
+                    return settings
         except Exception as e:
             self.app.log_message(f"Error loading settings: {str(e)}", 'error')
             return {}
