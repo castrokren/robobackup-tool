@@ -2,6 +2,7 @@
 """
 Diagnostic script for CI environment
 This will help us understand what's available and what's failing
+Updated to use ASCII characters for Windows compatibility
 """
 
 import sys
