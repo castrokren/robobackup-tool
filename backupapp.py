@@ -825,6 +825,9 @@ class BackupApp:
         # Start scheduler last
         self.start_scheduler()
         
+        # Update service status in status bar
+        self.update_service_status()
+        
         self.log_message("Application initialized successfully", 'info')
 
     def get_or_create_key(self):
@@ -1237,7 +1240,8 @@ class BackupApp:
         
         ttk.Button(button_frame, text="Run Backup Now", command=self.run_backup_now).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(button_frame, text="Add to Schedule", command=self.add_to_schedule).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Remove Selected", command=self.remove_scheduled_backup).pack(side=tk.LEFT)
+        ttk.Button(button_frame, text="Remove Selected", command=self.remove_scheduled_backup).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="Manage Service", command=self.manage_backup_service).pack(side=tk.LEFT)
 
         # Scheduled backups list
         list_frame = ttk.LabelFrame(schedule_frame, text="Scheduled Backups", padding="10")
@@ -1996,6 +2000,152 @@ class BackupApp:
             self.log_message(f"Error checking startup status: {str(e)}", 'error')
             return False
 
+    def check_backup_service_status(self):
+        """Check if the backup service is installed and running"""
+        try:
+            # Check Windows Service
+            result = subprocess.run([
+                "sc", "query", "RoboBackupService"
+            ], capture_output=True, text=True, shell=True)
+            
+            if result.returncode == 0:
+                output = result.stdout.upper()
+                if "RUNNING" in output:
+                    return "service_running"
+                elif "STOPPED" in output:
+                    return "service_stopped"
+                elif "START_PENDING" in output:
+                    return "service_starting"
+                elif "STOP_PENDING" in output:
+                    return "service_stopping"
+                else:
+                    return "service_installed"
+            else:
+                # Check Scheduled Task as fallback
+                result = subprocess.run([
+                    "schtasks", "/Query", "/TN", "RoboBackupService"
+                ], capture_output=True, text=True, shell=True)
+                
+                if result.returncode == 0:
+                    return "task_installed"
+                else:
+                    return "not_installed"
+                    
+        except Exception as e:
+            self.log_message(f"Error checking service status: {str(e)}", 'error')
+            return "error"
+    
+    def install_backup_service(self):
+        """Install the backup service for running backups when not logged in"""
+        try:
+            # Check if running as administrator
+            if not self.is_admin():
+                self.log_message("Administrator privileges required to install service", 'warning')
+                self.show_manual_elevation_instructions()
+                return False
+                
+            # Find the backup service script
+            possible_paths = [
+                os.path.join(os.getcwd(), "backup_service.py"),
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "backup_service.py"),
+                os.path.join(os.path.dirname(sys.executable), "backup_service.py"),
+                os.path.join(os.path.dirname(os.path.dirname(sys.executable)), "backup_service.py"),
+                "backup_service.py"
+            ]
+            
+            service_script = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    service_script = path
+                    break
+                    
+            if not service_script:
+                # Try to copy the file from the source directory
+                source_dir = os.path.dirname(os.path.dirname(sys.executable))
+                source_script = os.path.join(source_dir, "backup_service.py")
+                
+                if os.path.exists(source_script):
+                    import shutil
+                    try:
+                        shutil.copy2(source_script, os.getcwd())
+                        service_script = os.path.join(os.getcwd(), "backup_service.py")
+                        self.log_message(f"Copied backup_service.py from source to current directory", 'info')
+                    except Exception as e:
+                        self.log_message(f"Failed to copy backup_service.py: {str(e)}", 'error')
+                        return False
+                else:
+                    self.log_message(f"Backup service script not found. Tried paths: {possible_paths}", 'error')
+                    return False
+                
+            self.log_message(f"Found backup service script at: {service_script}", 'info')
+            
+            # Get the directory where the service script is located
+            service_dir = os.path.dirname(os.path.abspath(service_script))
+            
+            # Get the full path to Python executable
+            # Check if we're running from PyInstaller
+            if getattr(sys, 'frozen', False):
+                # Running from PyInstaller, need to find the actual Python interpreter
+                python_exe = "python"
+            else:
+                # Running from source, use sys.executable
+                python_exe = sys.executable
+            
+            # Install the service from the correct directory
+            self.log_message(f"Installing service using: {python_exe} {service_script} install", 'info')
+            result = subprocess.run([
+                python_exe, service_script, "install"
+            ], capture_output=True, text=True, shell=True, cwd=service_dir)
+            
+            # Check both return code and stderr for errors
+            if result.returncode == 0 and not result.stderr:
+                self.log_message("Backup service installed successfully", 'success')
+                
+                # Configure the service to start automatically
+                config_result = subprocess.run([
+                    "sc", "config", "RoboBackupService", "start=auto"
+                ], capture_output=True, text=True, shell=True)
+                
+                if config_result.returncode != 0:
+                    self.log_message(f"Warning: Could not configure service startup type: {config_result.stderr}", 'warning')
+                
+                # Start the service
+                start_result = subprocess.run([
+                    python_exe, service_script, "start"
+                ], capture_output=True, text=True, shell=True, cwd=service_dir)
+                
+                if start_result.returncode == 0:
+                    self.log_message("Backup service started successfully", 'success')
+                    return True
+                else:
+                    self.log_message(f"Service installed but failed to start: {start_result.stderr}", 'warning')
+                    return True
+            else:
+                # Check for specific error messages
+                error_output = result.stderr if result.stderr else result.stdout
+                if "Access is denied" in error_output or "Access is denied" in str(result.stdout):
+                    self.log_message(f"Service installation failed: Access denied. Please ensure you're running as Administrator.", 'error')
+                elif "already exists" in error_output:
+                    self.log_message("Service already exists, attempting to start...", 'info')
+                    # Try to start the existing service
+                    start_result = subprocess.run([
+                        python_exe, service_script, "start"
+                    ], capture_output=True, text=True, shell=True, cwd=service_dir)
+                    
+                    if start_result.returncode == 0:
+                        self.log_message("Existing backup service started successfully", 'success')
+                        return True
+                    else:
+                        self.log_message(f"Failed to start existing service: {start_result.stderr}", 'error')
+                        return False
+                else:
+                    self.log_message(f"Failed to install service. Return code: {result.returncode}, Error: {error_output}", 'error')
+                return False
+                
+        except Exception as e:
+            self.log_message(f"Error installing backup service: {str(e)}", 'error')
+            return False
+    
     def toggle_startup(self):
         """Toggle startup with Windows with passcode protection"""
         # Check if passcode is required for startup changes
@@ -2060,6 +2210,121 @@ class BackupApp:
             self.log_message(f"Error toggling startup: {str(e)}", 'error')
             self.audit_logger.log_event("STARTUP_ERROR", f"Error toggling startup: {str(e)}", user_ip)
             self.startup_var.set(not self.startup_var.get())
+
+    def manage_backup_service(self):
+        """Manage the backup service (create, start, stop, remove)"""
+        try:
+            # Check if running as administrator
+            if not self.is_admin():
+                self.log_message("Administrator privileges required to manage backup service", 'warning')
+                return False
+                
+            # Check current status
+            status = self.check_backup_service_status()
+            self.log_message(f"Current backup service status: {status}", 'info')
+            
+            # Create a simple dialog for service management
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Backup Service Management")
+            dialog.geometry("400x300")
+            dialog.transient(self.root)
+            dialog.grab_set()
+            
+            # Center the dialog
+            dialog.update_idletasks()
+            x = (dialog.winfo_screenwidth() // 2) - (400 // 2)
+            y = (dialog.winfo_screenheight() // 2) - (300 // 2)
+            dialog.geometry(f"400x300+{x}+{y}")
+            
+            # Status label
+            status_label = tk.Label(dialog, text=f"Status: {status}", font=("Arial", 10, "bold"))
+            status_label.pack(pady=10)
+            
+            # Buttons frame
+            buttons_frame = tk.Frame(dialog)
+            buttons_frame.pack(pady=20)
+            
+            def create_service():
+                if self.install_backup_service():
+                    status_label.config(text="Status: service_running")
+                    self.log_message("Backup service created and started", 'success')
+                    self.update_service_status()
+                else:
+                    self.log_message("Failed to create backup service", 'error')
+                    
+            def start_service():
+                result = subprocess.run([
+                    "sc", "start", "RoboBackupService"
+                ], capture_output=True, text=True, shell=True)
+                if result.returncode == 0:
+                    status_label.config(text="Status: service_running")
+                    self.log_message("Backup service started", 'success')
+                    self.update_service_status()
+                else:
+                    self.log_message(f"Failed to start service: {result.stderr}", 'error')
+                    
+            def stop_service():
+                result = subprocess.run([
+                    "sc", "stop", "RoboBackupService"
+                ], capture_output=True, text=True, shell=True)
+                if result.returncode == 0:
+                    status_label.config(text="Status: service_stopped")
+                    self.log_message("Backup service stopped", 'info')
+                    self.update_service_status()
+                else:
+                    self.log_message(f"Failed to stop service: {result.stderr}", 'error')
+                    
+            def remove_service():
+                result = subprocess.run([
+                    "sc", "delete", "RoboBackupService"
+                ], capture_output=True, text=True, shell=True)
+                if result.returncode == 0:
+                    status_label.config(text="Status: not_installed")
+                    self.log_message("Backup service removed", 'info')
+                    self.update_service_status()
+                else:
+                    self.log_message(f"Failed to remove service: {result.stderr}", 'error')
+            
+            # Create buttons based on current status
+            if status == "not_installed":
+                tk.Button(buttons_frame, text="Create Service", command=create_service).pack(pady=5)
+            elif status == "service_stopped" or status == "service_ready":
+                tk.Button(buttons_frame, text="Start Service", command=start_service).pack(pady=5)
+                tk.Button(buttons_frame, text="Remove Service", command=remove_service).pack(pady=5)
+            elif status == "service_running":
+                tk.Button(buttons_frame, text="Stop Service", command=stop_service).pack(pady=5)
+                tk.Button(buttons_frame, text="Remove Service", command=remove_service).pack(pady=5)
+            else:
+                tk.Button(buttons_frame, text="Create Service", command=create_service).pack(pady=5)
+            
+            # Close button
+            tk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=10)
+            
+        except Exception as e:
+            self.log_message(f"Error managing backup service: {str(e)}", 'error')
+
+    def is_admin(self):
+        """Check if running as administrator"""
+        try:
+            import ctypes
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        except:
+            return False
+
+    def update_service_status(self):
+        """Update the status bar with current service status"""
+        try:
+            status = self.check_backup_service_status()
+            if status == "service_running":
+                self.status_var.set("Ready - Backup Service: Running")
+            elif status == "service_stopped":
+                self.status_var.set("Ready - Backup Service: Stopped")
+            elif status == "not_installed":
+                self.status_var.set("Ready - Backup Service: Not Installed")
+            else:
+                self.status_var.set("Ready")
+        except Exception as e:
+            self.status_var.set("Ready")
 
     def setup_key_protection(self):
         """Set up key file protection with proper permissions"""

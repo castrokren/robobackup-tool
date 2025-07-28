@@ -1,121 +1,152 @@
 # RoboBackup Tool
 
-A Python-based backup tool that provides automated file backup functionality with logging and configuration management.
+A comprehensive Windows backup application with GUI interface, scheduled backups, and Windows service integration.
 
-## 📋 About
+## Features
 
-**RoboBackup Tool** is a comprehensive Windows backup solution designed for automated file synchronization and backup operations. Built with Python and leveraging Windows Robocopy, this tool provides both GUI and service-based backup capabilities for enterprise and personal use.
+- **GUI Interface**: User-friendly Tkinter-based interface
+- **Scheduled Backups**: Create and manage scheduled backup tasks
+- **Windows Service**: Run backups as a Windows service (runs when not logged in)
+- **Network Drives**: Support for UNC paths and network drive mapping
+- **Encryption**: Secure credential and settings storage
+- **Logging**: Comprehensive logging with rotation
+- **System Tray**: Minimize to system tray functionality
+- **Passcode Protection**: Optional passcode protection for sensitive operations
 
-### 🎯 Purpose
-- **Automated Backup Operations**: Schedule and automate file backups without manual intervention
-- **Network Path Support**: Native support for UNC paths and network drives without requiring drive mapping
-- **Dual Mode Operation**: Run as a GUI application for configuration or as a Windows service for automated backups
-- **Enterprise-Ready**: Designed for corporate environments with security features and audit logging
+## Requirements
 
-### 🔧 Core Features
-- **Robocopy Integration**: Leverages Windows Robocopy for reliable file synchronization
-- **UNC Path Support**: Direct support for network paths (\\server\share) without drive mapping
-- **Windows Service**: Can run as a background service for automated, scheduled backups
-- **GUI Interface**: User-friendly Tkinter interface for easy configuration and monitoring
-- **Comprehensive Logging**: Detailed logs for troubleshooting and audit trails
-- **Security Features**: Encrypted configuration storage and security audit logging
-- **Network Drive Mapping**: Automatic mapping and cleanup of network drives
-- **Configurable Schedules**: Flexible backup scheduling options
+- **Python**: 3.13.2 or higher
+- **Windows**: Windows 10/11 (Windows-specific features)
+- **Administrator Rights**: Required for service installation and some features
 
-### 🏗️ Architecture
-The application consists of three main components:
-- **`backup_core.py`**: Core backup functionality with UNC path support
-- **`backupapp.py`**: Tkinter GUI for user-friendly configuration
-- **`backup_service.py`**: Windows service implementation for automated backups
+## Installation
 
-### 🛡️ Security & Compliance
-- **Encrypted Credentials**: Secure storage of network credentials
-- **Audit Logging**: Comprehensive security event logging
-- **Temporary Network Mappings**: Automatic cleanup of network drive mappings
-- **Secure Configuration**: Encrypted configuration files
+### 1. Clone the Repository
+```bash
+git clone <your-repository-url>
+cd Backup_APP_1
+```
 
-## 🚀 Quick Start
+### 2. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
 
-### Prerequisites
-- Python 3.8 or higher
-- Windows OS (primary target)
+### 3. Run the Application
+```bash
+python backupapp.py
+```
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/robobackup-tool.git
-   cd robobackup-tool
-   ```
+## Building the Executable
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+To create a standalone executable:
 
-3. Run the application:
-   ```bash
-   python main.py
-   ```
+```bash
+pyinstaller RoboBackups.spec
+```
 
-## 📁 Project Structure
+The executable will be created in the `dist/` folder.
+
+## Project Structure
 
 ```
 Backup_APP_1/
-├── .github/          # GitHub workflows and CI/CD
-├── assets/           # Icons, images, and static resources
-├── config/           # Configuration files and settings
-├── installers/       # Installer scripts and NSIS files
-├── logs/             # Application logs (with archive subfolder)
-├── scripts/          # Build scripts and utilities
-├── backupapp.py      # Main application GUI
-├── backup_core.py    # Core backup functionality
-├── backup_service.py # Windows service functionality
-├── main.py          # Application entry point
-├── requirements.txt  # Python dependencies
-└── README.md        # This file
+├── backupapp.py              # Main application
+├── backup_service.py         # Windows service implementation
+├── create_scheduled_task.ps1 # PowerShell script for scheduled tasks
+├── requirements.txt          # Python dependencies
+├── RoboBackups.spec         # PyInstaller specification
+├── app.manifest             # Windows manifest file
+├── config/                  # Configuration directory
+├── logs/                    # Log files directory
+├── assets/                  # Application assets
+└── dist/                    # Built executable (generated)
 ```
 
-## 🔧 Development
+## Configuration
 
-### Building the Application
+### Initial Setup
+1. Run the application for the first time
+2. The application will create necessary directories and files
+3. Configure your backup settings through the GUI
+
+### Service Installation
+1. Run the application as Administrator
+2. Click "Manage Service" button
+3. Click "Create Service" to install the Windows service
+4. The service will run backups even when not logged in
+
+## Usage
+
+### Basic Backup
+1. Enter source and destination paths
+2. Configure robocopy flags if needed
+3. Click "Run Backup Now" for immediate backup
+4. Or add to schedule for automated backups
+
+### Scheduled Backups
+1. Configure backup settings
+2. Click "Add to Schedule"
+3. Set date and time
+4. The backup will run automatically
+
+### Service Management
+- **Create Service**: Installs Windows service for background operation
+- **Start Service**: Starts the backup service
+- **Stop Service**: Stops the backup service
+- **Remove Service**: Uninstalls the Windows service
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Access is denied" errors**
+   - Run the application as Administrator
+   - Ensure you have proper permissions
+
+2. **Service installation fails**
+   - Make sure you're running as Administrator
+   - Check that Python is in your PATH
+   - Verify all dependencies are installed
+
+3. **Network drive mapping issues**
+   - Ensure network credentials are correct
+   - Check network connectivity
+   - Verify UNC path format
+
+### Logs
+- Application logs: `logs/app_YYYYMMDD.log`
+- Service logs: `logs/backup_service.log`
+- Security audit logs: `logs/security_audit.log`
+
+## Development
+
+### Running from Source
 ```bash
-# Run build script
-python scripts/build_exe.py
-
-# Or use PyInstaller directly
-pyinstaller --onefile --windowed main.py
+python backupapp.py
 ```
 
-### Running Tests
+### Testing the Service
 ```bash
-python -m pytest test_backup_core.py
+python backup_service.py --standalone
 ```
 
-## 📋 Features
+### Building
+```bash
+pyinstaller RoboBackups.spec
+```
 
-- Automated file backup with configurable schedules
-- Comprehensive logging system
-- Windows service integration
-- GUI interface for easy configuration
-- Security audit logging
-- Configurable backup destinations
+## Security Notes
 
-## 🤝 Contributing
+- Credentials are encrypted and stored locally
+- Passcode protection is available for sensitive operations
+- Log files may contain sensitive information
+- The `.gitignore` file excludes sensitive configuration files
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+## License
 
-## 📄 License
+[Add your license information here]
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Contributing
 
-## 🔄 CI/CD
-
-This project uses GitHub Actions for continuous integration:
-- Automated testing on multiple Python versions
-- Code linting with flake8
-- Automated builds with PyInstaller
-- Artifact uploads for releases
-
-## 📝 Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes.
+[Add contribution guidelines here]
