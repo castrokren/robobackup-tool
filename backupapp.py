@@ -3307,11 +3307,6 @@ class VerifyPasscodeDialog:
         self.result = False
         self.dialog.destroy()
 
-    def set_or_change_passcode(self):
-        dialog = SetPasscodeDialog(self.root, self.passcode_manager)
-        if dialog.result:
-            self.log_message("Passcode updated.", 'success')
-
 def normalize_unc_path(path):
     """Normalize a path to use backslashes and ensure UNC paths start with double backslashes."""
     if not path:
