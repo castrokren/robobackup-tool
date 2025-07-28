@@ -1664,8 +1664,8 @@ class BackupApp:
         self.log_message(msg, 'success')
         self.audit_logger.log_event("SCHEDULE_ADD", f"Added scheduled backup: {msg}", user_ip)
         
-        # Auto-save settings after adding backup
-        self.auto_save_settings()
+        # Save settings after adding backup (requires passcode protection)
+        self.save_settings()
 
         # Clear password fields
         self.source_pwd_entry.delete(0, tk.END)
@@ -1702,8 +1702,8 @@ class BackupApp:
         self.log_message(msg, 'info')
         self.audit_logger.log_event("SCHEDULE_REMOVE", msg, user_ip)
         
-        # Auto-save settings after removing backup
-        self.auto_save_settings()
+        # Save settings after removing backup (requires passcode protection)
+        self.save_settings()
 
     def validate_date(self, date_text):
         for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%d-%m-%Y"):
@@ -2304,25 +2304,47 @@ class BackupApp:
             self.log_message(f"Error loading settings: {str(e)}", 'error')
 
     def auto_save_settings(self, event=None):
-        """Auto-save settings when they change with passcode protection"""
+        """Auto-save settings when they change without passcode protection for basic settings"""
         try:
             # Use after() to debounce rapid changes
             if hasattr(self, '_save_timer'):
                 self.root.after_cancel(self._save_timer)
             
-            # Check if passcode is required for auto-save
-            if self.passcode_manager.has_passcode():
-                # For auto-save, we'll use a cached verification to avoid too many dialogs
-                if not hasattr(self, '_auto_save_verified') or not self._auto_save_verified:
-                    dialog = VerifyPasscodeDialog(self.root, self.passcode_manager)
-                    if not dialog.result:
-                        self.log_message("Auto-save cancelled - passcode verification failed", 'warning')
-                        return
-                    self._auto_save_verified = True
-                    # Reset verification after 5 minutes
-                    self.root.after(300000, lambda: setattr(self, '_auto_save_verified', False))
+            # Schedule the save for 1 second later to avoid too frequent saves
+            self._save_timer = self.root.after(1000, self._auto_save_basic_settings)
+        except Exception as e:
+            self.log_message(f"Error in auto-save: {str(e)}", 'error')
+    
+    def _auto_save_basic_settings(self):
+        """Auto-save basic settings without passcode protection"""
+        try:
+            # Only save basic settings that don't require passcode protection
+            basic_settings = {
+                'source_path': self.source_entry.get() if hasattr(self, 'source_entry') else '',
+                'dest_path': self.dest_entry.get() if hasattr(self, 'dest_entry') else '',
+                'flags': self.flags_entry.get() if hasattr(self, 'flags_entry') else '/E /V /X /R:1 /W:5 /MT:12 /A-:SH /SL',
+                'source_user': self.source_user_entry.get() if hasattr(self, 'source_user_entry') else '',
+                'dest_user': self.dest_user_entry.get() if hasattr(self, 'dest_user_entry') else '',
+                'source_remember': self.source_remember_var.get() if hasattr(self, 'source_remember_var') else False,
+                'dest_remember': self.dest_remember_var.get() if hasattr(self, 'dest_remember_var') else False,
+                'startup_enabled': self.startup_var.get() if hasattr(self, 'startup_var') else False,
+                'window_state': self.root.state() if hasattr(self, 'root') else 'normal'
+            }
             
-            self._save_timer = self.root.after(1000, self.save_settings)  # Save after 1 second of no changes
+            # Load existing settings to preserve scheduled backups
+            existing_settings = {}
+            if hasattr(self, 'settings_manager'):
+                existing_settings = self.settings_manager.load_settings()
+            
+            # Merge basic settings with existing settings
+            existing_settings.update(basic_settings)
+            
+            # Save without passcode verification for auto-save
+            if hasattr(self, 'settings_manager'):
+                if self.settings_manager.save_settings(existing_settings):
+                    self.log_message("Settings saved successfully", 'info')
+                else:
+                    self.log_message("Failed to save settings", 'error')
         except Exception as e:
             self.log_message(f"Error in auto-save: {str(e)}", 'error')
 
