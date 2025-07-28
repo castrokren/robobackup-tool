@@ -1,0 +1,11 @@
+# Core dependencies
+tkinter  # Usually included with Python on Windows
+pywin32>=306
+cryptography>=3.4.8
+
+# Development and packaging
+pyinstaller>=5.0
+setuptools>=65.0.0
+
+# Optional: For enhanced logging and configuration
+configparser>=5.0.0 
