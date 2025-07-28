@@ -2,6 +2,38 @@
 
 A Python-based backup tool that provides automated file backup functionality with logging and configuration management.
 
+## 📋 About
+
+**RoboBackup Tool** is a comprehensive Windows backup solution designed for automated file synchronization and backup operations. Built with Python and leveraging Windows Robocopy, this tool provides both GUI and service-based backup capabilities for enterprise and personal use.
+
+### 🎯 Purpose
+- **Automated Backup Operations**: Schedule and automate file backups without manual intervention
+- **Network Path Support**: Native support for UNC paths and network drives without requiring drive mapping
+- **Dual Mode Operation**: Run as a GUI application for configuration or as a Windows service for automated backups
+- **Enterprise-Ready**: Designed for corporate environments with security features and audit logging
+
+### 🔧 Core Features
+- **Robocopy Integration**: Leverages Windows Robocopy for reliable file synchronization
+- **UNC Path Support**: Direct support for network paths (\\server\share) without drive mapping
+- **Windows Service**: Can run as a background service for automated, scheduled backups
+- **GUI Interface**: User-friendly Tkinter interface for easy configuration and monitoring
+- **Comprehensive Logging**: Detailed logs for troubleshooting and audit trails
+- **Security Features**: Encrypted configuration storage and security audit logging
+- **Network Drive Mapping**: Automatic mapping and cleanup of network drives
+- **Configurable Schedules**: Flexible backup scheduling options
+
+### 🏗️ Architecture
+The application consists of three main components:
+- **`backup_core.py`**: Core backup functionality with UNC path support
+- **`backupapp.py`**: Tkinter GUI for user-friendly configuration
+- **`backup_service.py`**: Windows service implementation for automated backups
+
+### 🛡️ Security & Compliance
+- **Encrypted Credentials**: Secure storage of network credentials
+- **Audit Logging**: Comprehensive security event logging
+- **Temporary Network Mappings**: Automatic cleanup of network drive mappings
+- **Secure Configuration**: Encrypted configuration files
+
 ## 🚀 Quick Start
 
 ### Prerequisites
