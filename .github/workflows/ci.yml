@@ -22,41 +22,75 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     
-    - name: Show Python version
+    - name: Show Python version and environment
       run: |
+        echo "=== Python Environment ==="
         python --version
         python -c "import sys; print(f'Python {sys.version}')"
+        echo "=== Working Directory ==="
+        pwd
+        echo "=== Directory Contents ==="
+        ls -la
+        echo "=== Environment Variables ==="
+        echo "PYTHONPATH: $PYTHONPATH"
+        echo "PATH: $PATH"
     
     - name: Install core dependencies
       run: |
+        echo "=== Installing Core Dependencies ==="
         python -m pip install --upgrade pip
         pip install requests cryptography configparser setuptools
+        echo "Core dependencies installed successfully"
     
     - name: Install optional dependencies
       run: |
+        echo "=== Installing Optional Dependencies ==="
         pip install pywin32 || echo "pywin32 installation failed (expected in some environments)"
         pip install pyinstaller || echo "pyinstaller installation failed"
         pip install pytest pytest-cov flake8 || echo "test dependencies installation failed"
+        echo "Optional dependencies installation completed"
     
     - name: Show installed packages
       run: |
+        echo "=== Installed Packages ==="
         pip list
+    
+    - name: Test Python imports
+      run: |
+        echo "=== Testing Python Imports ==="
+        python -c "import sys; print('sys imported successfully')"
+        python -c "import os; print('os imported successfully')"
+        python -c "import tempfile; print('tempfile imported successfully')"
+        python -c "import shutil; print('shutil imported successfully')"
+        python -c "import json; print('json imported successfully')"
+        python -c "import logging; print('logging imported successfully')"
+        python -c "import requests; print('requests imported successfully')" || echo "requests not available"
+        python -c "import win32wnet; print('win32wnet imported successfully')" || echo "win32wnet not available"
+        python -c "import win32netcon; print('win32netcon imported successfully')" || echo "win32netcon not available"
+        python -c "import cryptography; print('cryptography imported successfully')" || echo "cryptography not available"
+    
+    - name: Run diagnostic script
+      run: |
+        echo "=== Running Diagnostic Script ==="
+        python diagnose_ci.py
     
     - name: Run basic tests first
       run: |
-        echo "Running basic CI-friendly tests..."
-        python -m pytest test_ci_friendly.py -v || echo "Basic tests failed, but continuing..."
+        echo "=== Running Basic CI-Friendly Tests ==="
+        python -m pytest test_ci_friendly.py -v --tb=long || echo "Basic tests failed, but continuing..."
     
     - name: Lint with flake8
       run: |
+        echo "=== Running Linting ==="
         # Skip files that might have import issues
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=test_*.py,update_*.py || echo "Linting completed with warnings"
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude=test_*.py,update_*.py || echo "Linting completed with warnings"
     
     - name: Test with pytest (with detailed output)
       run: |
+        echo "=== Running All Tests ==="
         # Run tests with maximum verbosity and continue on errors
-        python -m pytest -v --tb=long --maxfail=3 || echo "Some tests failed, but continuing..."
+        python -m pytest -v --tb=long --maxfail=5 || echo "Some tests failed, but continuing..."
     
     - name: Show test results summary
       run: |
@@ -65,6 +99,7 @@ jobs:
     
     - name: Build with PyInstaller
       run: |
+        echo "=== Building Executable ==="
         # Only build if we're on the main branch or it's a PR
         if [ "${{ github.ref }}" = "refs/heads/main" ] || [ "${{ github.event_name }}" = "pull_request" ]; then
           echo "Building executable..."
