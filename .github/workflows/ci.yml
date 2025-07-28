@@ -79,7 +79,7 @@ jobs:
     - name: Run diagnostic script
       run: |
         echo "=== Running Diagnostic Script ==="
-        python diagnose_ci.py
+        python ci_diagnostics.py
     
     - name: Run basic tests first
       run: |
