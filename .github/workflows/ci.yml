@@ -28,12 +28,12 @@ jobs:
         python --version
         python -c "import sys; print(f'Python {sys.version}')"
         echo "=== Working Directory ==="
-        pwd
+        Get-Location
         echo "=== Directory Contents ==="
-        ls -la
+        Get-ChildItem
         echo "=== Environment Variables ==="
-        echo "PYTHONPATH: $PYTHONPATH"
-        echo "PATH: $PATH"
+        echo "PYTHONPATH: $env:PYTHONPATH"
+        echo "PATH: $env:PATH"
     
     - name: Install core dependencies
       run: |
@@ -101,12 +101,12 @@ jobs:
       run: |
         echo "=== Building Executable ==="
         # Only build if we're on the main branch or it's a PR
-        if [ "${{ github.ref }}" = "refs/heads/main" ] || [ "${{ github.event_name }}" = "pull_request" ]; then
+        if ("${{ github.ref }}" -eq "refs/heads/main" -or "${{ github.event_name }}" -eq "pull_request") {
           echo "Building executable..."
           pyinstaller --onefile --windowed main.py || echo "Build failed, but continuing..."
-        else
+        } else {
           echo "Skipping build for non-main branch"
-        fi
+        }
       
     - name: Upload build artifacts
       if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
