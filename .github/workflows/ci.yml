@@ -9,6 +9,7 @@ on:
 jobs:
   test:
     runs-on: windows-latest
+    timeout-minutes: 30
     
     strategy:
       matrix:
@@ -38,16 +39,22 @@ jobs:
     - name: Install core dependencies
       run: |
         echo "=== Installing Core Dependencies ==="
-        python -m pip install --upgrade pip
-        pip install requests cryptography configparser setuptools
+        python -m pip install --upgrade pip --timeout 300
+        pip install requests --timeout 300 --retries 3
         echo "Core dependencies installed successfully"
+    
+    - name: Install test dependencies
+      run: |
+        echo "=== Installing Test Dependencies ==="
+        pip install pytest --timeout 300 --retries 3 || echo "pytest installation failed"
+        echo "Test dependencies installation completed"
     
     - name: Install optional dependencies
       run: |
         echo "=== Installing Optional Dependencies ==="
-        pip install pywin32 || echo "pywin32 installation failed (expected in some environments)"
-        pip install pyinstaller || echo "pyinstaller installation failed"
-        pip install pytest pytest-cov flake8 || echo "test dependencies installation failed"
+        pip install pywin32 --timeout 300 --retries 3 || echo "pywin32 installation failed (expected in some environments)"
+        pip install pyinstaller --timeout 300 --retries 3 || echo "pyinstaller installation failed"
+        pip install flake8 --timeout 300 --retries 3 || echo "flake8 installation failed"
         echo "Optional dependencies installation completed"
     
     - name: Show installed packages
