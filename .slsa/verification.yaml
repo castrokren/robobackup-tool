@@ -1,0 +1,205 @@
+# SLSA Verification Configuration
+# Defines how to verify SLSA attestations and security compliance
+
+version: "1.0"
+verification_name: "RoboBackup SLSA Verification"
+
+verification_steps:
+  - name: "provenance-verification"
+    description: "Verify SLSA provenance authenticity"
+    type: "provenance-check"
+    required: true
+    
+    checks:
+      - name: "builder-identity"
+        description: "Verify builder identity matches expected"
+        type: "string-match"
+        field: "predicate.builder.id"
+        pattern: "https://github.com/.*/actions/runs/.*"
+      
+      - name: "source-uri"
+        description: "Verify source URI is correct"
+        type: "string-match"
+        field: "predicate.invocation.configSource.uri"
+        pattern: "https://github.com/.*@.*"
+      
+      - name: "build-type"
+        description: "Verify build type is correct"
+        type: "string-match"
+        field: "predicate.invocation.parameters.build_type"
+        expected: "python-application"
+      
+      - name: "security-scans"
+        description: "Verify security scans were performed"
+        type: "array-contains"
+        field: "predicate.invocation.parameters.security_scans"
+        required_values: ["bandit", "safety", "semgrep"]
+      
+      - name: "dependency-analysis"
+        description: "Verify dependency analysis was performed"
+        type: "array-contains"
+        field: "predicate.invocation.parameters.dependency_analysis"
+        required_values: ["pip-audit", "sbom"]
+
+  - name: "artifact-verification"
+    description: "Verify build artifacts integrity"
+    type: "artifact-check"
+    required: true
+    
+    checks:
+      - name: "executable-hash"
+        description: "Verify executable file hashes"
+        type: "file-hash"
+        files:
+          - "dist/RoboBackupApp.exe"
+          - "dist/RoboBackupService.exe"
+        algorithm: "sha256"
+      
+      - name: "artifact-existence"
+        description: "Verify required artifacts exist"
+        type: "file-existence"
+        files:
+          - "dist/RoboBackupApp.exe"
+          - "dist/RoboBackupService.exe"
+          - "provenance.json"
+
+  - name: "security-verification"
+    description: "Verify security scan results"
+    type: "security-check"
+    required: true
+    
+    checks:
+      - name: "bandit-results"
+        description: "Verify Bandit security scan completed"
+        type: "file-existence"
+        files:
+          - "security-results/bandit-report.json"
+          - "security-results/bandit-report.txt"
+      
+      - name: "safety-results"
+        description: "Verify Safety vulnerability check completed"
+        type: "file-existence"
+        files:
+          - "security-results/safety-report.json"
+          - "security-results/safety-report.txt"
+      
+      - name: "semgrep-results"
+        description: "Verify Semgrep security scan completed"
+        type: "file-existence"
+        files:
+          - "security-results/semgrep-report.sarif"
+      
+      - name: "vulnerability-threshold"
+        description: "Verify no high/critical vulnerabilities"
+        type: "vulnerability-scan"
+        max_severity: "medium"
+        tools: ["bandit", "safety", "semgrep"]
+
+  - name: "dependency-verification"
+    description: "Verify dependency analysis results"
+    type: "dependency-check"
+    required: true
+    
+    checks:
+      - name: "sbom-generation"
+        description: "Verify SBOM was generated"
+        type: "file-existence"
+        files:
+          - "dependency-results/sbom.json"
+          - "dependency-results/sbom.xml"
+      
+      - name: "pip-audit-results"
+        description: "Verify pip-audit completed"
+        type: "file-existence"
+        files:
+          - "dependency-results/pip-audit-report.json"
+          - "dependency-results/pip-audit-report.txt"
+      
+      - name: "dependency-vulnerabilities"
+        description: "Verify no critical dependency vulnerabilities"
+        type: "vulnerability-scan"
+        max_severity: "medium"
+        tools: ["pip-audit", "safety"]
+
+  - name: "compliance-verification"
+    description: "Verify compliance with security frameworks"
+    type: "compliance-check"
+    required: true
+    
+    checks:
+      - name: "slsa-level-2"
+        description: "Verify SLSA Level 2 compliance"
+        type: "framework-compliance"
+        framework: "SLSA"
+        level: 2
+        requirements:
+          - "tamper-resistant build process"
+          - "security verification"
+          - "provenance generation"
+          - "artifact verification"
+      
+      - name: "owasp-compliance"
+        description: "Verify OWASP Top 10 compliance"
+        type: "framework-compliance"
+        framework: "OWASP"
+        version: "2021"
+        required_controls:
+          - "A01:2021 - Broken Access Control"
+          - "A02:2021 - Cryptographic Failures"
+          - "A03:2021 - Injection"
+          - "A05:2021 - Security Misconfiguration"
+          - "A06:2021 - Vulnerable Components"
+
+verification_tools:
+  - name: "slsa-verifier"
+    description: "SLSA verification tool"
+    version: "1.0.0"
+    command: "slsa-verifier"
+    
+  - name: "in-toto"
+    description: "In-toto verification framework"
+    version: "0.5.0"
+    command: "in-toto-verify"
+    
+  - name: "cyclonedx-validator"
+    description: "CycloneDX SBOM validator"
+    version: "1.0.0"
+    command: "cyclonedx-validator"
+
+verification_output:
+  format: "json"
+  output_file: "verification-results.json"
+  include_details: true
+  include_recommendations: true
+  
+  reporting:
+    - name: "verification-summary"
+      description: "Summary of verification results"
+      format: "markdown"
+      output_file: "verification-summary.md"
+    
+    - name: "compliance-report"
+      description: "Compliance status report"
+      format: "html"
+      output_file: "compliance-report.html"
+
+failure_handling:
+  on_verification_failure:
+    action: "fail"
+    notification: ["security-team"]
+    logging: true
+    
+  on_compliance_failure:
+    action: "warn"
+    notification: ["security-team", "dev-team"]
+    logging: true
+    
+  on_warning:
+    action: "continue"
+    notification: ["dev-team"]
+    logging: true
+
+documentation:
+  verification_guide: "docs/verification/README.md"
+  troubleshooting: "docs/verification/troubleshooting.md"
+  compliance_matrix: "docs/verification/compliance-matrix.md"

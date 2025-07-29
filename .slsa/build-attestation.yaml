@@ -1,0 +1,99 @@
+# SLSA Build Attestation Template
+# Defines the structure for build attestations
+
+version: "0.2"
+type: "https://in-toto.io/Statement/v0.1"
+
+subject:
+  # Build artifacts will be added here during build process
+  - name: "RoboBackupApp.exe"
+    digest:
+      sha256: "{{ sha256_hash }}"
+  
+  - name: "RoboBackupService.exe"
+    digest:
+      sha256: "{{ sha256_hash }}"
+
+predicateType: "https://slsa.dev/provenance/v0.2"
+predicate:
+  buildType: "https://github.com/actions/build@v1"
+  
+  builder:
+    id: "{{ builder_id }}"
+  
+  invocation:
+    configSource:
+      uri: "{{ source_uri }}"
+      digest:
+        sha1: "{{ source_sha1 }}"
+      entryPoint: "build"
+    
+    parameters:
+      build_type: "python-application"
+      build_tool: "pyinstaller"
+      security_scans: ["bandit", "safety", "semgrep"]
+      dependency_analysis: ["pip-audit", "sbom"]
+  
+  metadata:
+    buildInvocationId: "{{ build_invocation_id }}"
+    buildStartedOn: "{{ build_started_on }}"
+    buildFinishedOn: "{{ build_finished_on }}"
+    completeness:
+      parameters: true
+      environment: false
+      materials: false
+    reproducible: false
+  
+  materials:
+    - uri: "{{ source_uri }}"
+      digest:
+        sha1: "{{ source_sha1 }}"
+    
+    # Security scan results
+    - uri: "security-results/bandit-report.json"
+      digest:
+        sha256: "{{ bandit_sha256 }}"
+    
+    - uri: "security-results/safety-report.json"
+      digest:
+        sha256: "{{ safety_sha256 }}"
+    
+    - uri: "security-results/semgrep-report.sarif"
+      digest:
+        sha256: "{{ semgrep_sha256 }}"
+    
+    # Dependency analysis results
+    - uri: "dependency-results/sbom.json"
+      digest:
+        sha256: "{{ sbom_sha256 }}"
+    
+    - uri: "dependency-results/pip-audit-report.json"
+      digest:
+        sha256: "{{ pip_audit_sha256 }}"
+
+# Verification requirements
+verification:
+  required_checks:
+    - name: "artifact-integrity"
+      description: "Verify artifact hashes match provenance"
+      type: "hash-verification"
+    
+    - name: "security-scan-completion"
+      description: "Verify all security scans completed"
+      type: "file-existence"
+      files:
+        - "security-results/bandit-report.json"
+        - "security-results/safety-report.json"
+        - "security-results/semgrep-report.sarif"
+    
+    - name: "sbom-generation"
+      description: "Verify SBOM was generated"
+      type: "file-existence"
+      files:
+        - "dependency-results/sbom.json"
+        - "dependency-results/sbom.xml"
+    
+    - name: "vulnerability-check"
+      description: "Verify no high/critical vulnerabilities"
+      type: "vulnerability-scan"
+      max_severity: "medium"

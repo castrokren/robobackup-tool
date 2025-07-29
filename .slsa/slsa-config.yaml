@@ -1,0 +1,125 @@
+# SLSA Configuration for RoboBackup Tool
+# Supply Chain Levels for Software Artifacts (SLSA) v0.2
+
+version: "0.2"
+project:
+  name: "RoboBackup Tool"
+  version: "1.0.0"
+  description: "Automated backup tool with Windows service integration"
+
+build:
+  type: "python-application"
+  tool: "pyinstaller"
+  entry_point: "backupapp.py"
+  service_entry_point: "backup_service.py"
+  
+  artifacts:
+    - name: "RoboBackupApp.exe"
+      type: "executable"
+      platform: "windows"
+      description: "Main backup application GUI"
+    
+    - name: "RoboBackupService.exe"
+      type: "service"
+      platform: "windows"
+      description: "Windows service for automated backups"
+
+security:
+  required_scans:
+    - name: "bandit"
+      type: "static-analysis"
+      description: "Python security linter"
+      severity_threshold: "medium"
+    
+    - name: "safety"
+      type: "dependency-scan"
+      description: "Known vulnerability checker"
+      severity_threshold: "high"
+    
+    - name: "semgrep"
+      type: "static-analysis"
+      description: "Advanced security pattern detection"
+      config: ["p/security-audit", "p/secrets", "p/owasp-top-ten"]
+    
+    - name: "pip-audit"
+      type: "dependency-scan"
+      description: "Dependency vulnerability scanner"
+      severity_threshold: "high"
+
+  sbom:
+    required: true
+    format: ["json", "xml"]
+    tool: "cyclonedx-py"
+    include_dev_dependencies: false
+
+provenance:
+  version: "0.2"
+  builder_id: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  
+  materials:
+    - type: "source"
+      uri: "${{ github.server_url }}/${{ github.repository }}@${{ github.ref }}"
+      digest:
+        sha1: "${{ github.sha }}"
+  
+  metadata:
+    build_invocation_id: "${{ github.run_id }}"
+    build_started_on: "${{ github.event.head_commit.timestamp }}"
+    completeness:
+      parameters: true
+      environment: false
+      materials: false
+    reproducible: false
+
+verification:
+  required_checks:
+    - name: "security-scan"
+      description: "All security scans must pass"
+      failure_action: "fail"
+    
+    - name: "dependency-check"
+      description: "Dependency vulnerabilities must be resolved"
+      failure_action: "fail"
+    
+    - name: "sbom-generation"
+      description: "Software Bill of Materials must be generated"
+      failure_action: "fail"
+    
+    - name: "provenance-generation"
+      description: "SLSA provenance must be generated"
+      failure_action: "fail"
+
+release:
+  security_gates:
+    - name: "vulnerability-scan"
+      description: "No high/critical vulnerabilities"
+      required: true
+    
+    - name: "sbom-present"
+      description: "SBOM must be included in release"
+      required: true
+    
+    - name: "provenance-present"
+      description: "SLSA provenance must be included"
+      required: true
+
+compliance:
+  slsa_level: 2
+  frameworks:
+    - name: "SLSA"
+      version: "0.2"
+      level: 2
+    
+    - name: "OWASP"
+      version: "2021"
+      compliance: "partial"
+    
+    - name: "NIST"
+      version: "800-218"
+      compliance: "partial"
+
+documentation:
+  security_policy: "SECURITY.md"
+  sbom_location: "docs/sbom/"
+  provenance_location: "docs/provenance/"
+  audit_logs: "logs/security/"
