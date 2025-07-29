@@ -1,15 +1,18 @@
 # SLSA Configuration for RoboBackup Tool
 # Supply Chain Levels for Software Artifacts (SLSA) v0.2
+# Windows-only application
 
 version: "0.2"
 project:
   name: "RoboBackup Tool"
   version: "1.0.0"
-  description: "Automated backup tool with Windows service integration"
+  description: "Windows-only automated backup tool with Windows service integration"
+  platform: "windows"
 
 build:
   type: "python-application"
   tool: "pyinstaller"
+  platform: "windows"
   entry_point: "backupapp.py"
   service_entry_point: "backup_service.py"
   
@@ -25,6 +28,7 @@ build:
       description: "Windows service for automated backups"
 
 security:
+  platform: "windows"
   required_scans:
     - name: "bandit"
       type: "static-analysis"
@@ -55,6 +59,7 @@ security:
 provenance:
   version: "0.2"
   builder_id: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  platform: "windows"
   
   materials:
     - type: "source"
@@ -72,6 +77,7 @@ provenance:
     reproducible: false
 
 verification:
+  platform: "windows"
   required_checks:
     - name: "security-scan"
       description: "All security scans must pass"
@@ -88,8 +94,13 @@ verification:
     - name: "provenance-generation"
       description: "SLSA provenance must be generated"
       failure_action: "fail"
+    
+    - name: "windows-compatibility"
+      description: "Verify Windows-specific dependencies"
+      failure_action: "fail"
 
 release:
+  platform: "windows"
   security_gates:
     - name: "vulnerability-scan"
       description: "No high/critical vulnerabilities"
@@ -102,9 +113,14 @@ release:
     - name: "provenance-present"
       description: "SLSA provenance must be included"
       required: true
+    
+    - name: "windows-executables"
+      description: "Windows executables must be present"
+      required: true
 
 compliance:
   slsa_level: 2
+  platform: "windows"
   frameworks:
     - name: "SLSA"
       version: "0.2"
