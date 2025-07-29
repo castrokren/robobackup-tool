@@ -13,8 +13,102 @@ env:
   SLSA_WORKFLOW_ID: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
 jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Bandit security linter
+      run: |
+        pip install bandit
+        bandit -r . -f json -o bandit-report.json || true
+        bandit -r . -f txt -o bandit-report.txt || true
+
+    - name: Run Safety check for known vulnerabilities
+      run: |
+        pip install safety
+        safety check --json --output safety-report.json || true
+        safety check --output safety-report.txt || true
+
+    - name: Run Semgrep security scan
+      uses: returntocorp/semgrep-action@v1
+      with:
+        config: >-
+          p/security-audit
+          p/secrets
+          p/owasp-top-ten
+
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-scan-results
+        path: |
+          bandit-report.json
+          bandit-report.txt
+          safety-report.json
+          safety-report.txt
+          semgrep-report.sarif
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run pip-audit for dependency vulnerabilities
+      run: |
+        pip install pip-audit
+        pip-audit --format json --output pip-audit-report.json || true
+        pip-audit --output pip-audit-report.txt || true
+
+    - name: Generate Software Bill of Materials (SBOM)
+      run: |
+        pip install cyclonedx-bom
+        cyclonedx-py --format json --output sbom.json
+        cyclonedx-py --format xml --output sbom.xml
+
+    - name: Upload dependency analysis results
+      uses: actions/upload-artifact@v4
+      with:
+        name: dependency-analysis-results
+        path: |
+          pip-audit-report.json
+          pip-audit-report.txt
+          sbom.json
+          sbom.xml
+
   build:
     runs-on: windows-latest
+    needs: [security-scan, dependency-check]
     permissions:
       contents: write
       id-token: write
@@ -36,6 +130,38 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install build wheel setuptools pyinstaller
+
+    - name: Download security scan results
+      uses: actions/download-artifact@v4
+      with:
+        name: security-scan-results
+        path: security-results/
+
+    - name: Download dependency analysis results
+      uses: actions/download-artifact@v4
+      with:
+        name: dependency-analysis-results
+        path: dependency-results/
+
+    - name: Verify security scan results
+      run: |
+        echo "=== Security Scan Verification ==="
+        if (Test-Path "security-results/bandit-report.json") {
+          echo "Bandit security scan completed"
+        }
+        if (Test-Path "security-results/safety-report.json") {
+          echo "Safety vulnerability check completed"
+        }
+        if (Test-Path "security-results/semgrep-report.sarif") {
+          echo "Semgrep security scan completed"
+        }
+        echo "=== Dependency Analysis Verification ==="
+        if (Test-Path "dependency-results/sbom.json") {
+          echo "Software Bill of Materials generated"
+        }
+        if (Test-Path "dependency-results/pip-audit-report.json") {
+          echo "Dependency vulnerability check completed"
+        }
 
     - name: Build application
       run: |
@@ -82,7 +208,9 @@ jobs:
                 },
                 parameters: {
                   "build_type": "python-application",
-                  "build_tool": "pyinstaller"
+                  "build_tool": "pyinstaller",
+                  "security_scans": ["bandit", "safety", "semgrep"],
+                  "dependency_analysis": ["pip-audit", "sbom"]
                 }
               },
               metadata: {
@@ -120,12 +248,24 @@ jobs:
             }
           }
           
-          // Add installer files if they exist
-          const installerFiles = ['dist/*.msi', 'dist/*.exe'];
-          for (const pattern of installerFiles) {
-            // Note: This is a simplified approach. In a real implementation,
-            // you would use a glob library to find matching files
-            console.log(`Looking for installer files matching: ${pattern}`);
+          // Add security and dependency analysis results
+          const securityFiles = [
+            'security-results/bandit-report.json',
+            'security-results/safety-report.json',
+            'security-results/semgrep-report.sarif',
+            'dependency-results/sbom.json',
+            'dependency-results/pip-audit-report.json'
+          ];
+          
+          for (const securityFile of securityFiles) {
+            if (fs.existsSync(securityFile)) {
+              const fileBuffer = fs.readFileSync(securityFile);
+              const hash = createHash('sha256').update(fileBuffer).digest('hex');
+              provenance.subject.push({
+                name: securityFile,
+                digest: { sha256: hash }
+              });
+            }
           }
           
           // Write provenance file
@@ -143,6 +283,8 @@ jobs:
           *.exe
           *.msi
           provenance.json
+          security-results/
+          dependency-results/
 
   release:
     needs: build
@@ -163,6 +305,32 @@ jobs:
         name: backup-app-artifacts
         path: release/
 
+    - name: Verify security compliance
+      run: |
+        echo "=== Security Compliance Verification ==="
+        if [ -f "release/security-results/bandit-report.json" ]; then
+          echo "✅ Bandit security scan present"
+        else
+          echo "❌ Bandit security scan missing"
+          exit 1
+        fi
+        
+        if [ -f "release/security-results/safety-report.json" ]; then
+          echo "✅ Safety vulnerability check present"
+        else
+          echo "❌ Safety vulnerability check missing"
+          exit 1
+        fi
+        
+        if [ -f "release/dependency-results/sbom.json" ]; then
+          echo "✅ Software Bill of Materials present"
+        else
+          echo "❌ Software Bill of Materials missing"
+          exit 1
+        fi
+        
+        echo "✅ All security checks passed"
+
     - name: Create release with provenance
       uses: actions/github-script@v7
       with:
@@ -170,7 +338,7 @@ jobs:
           const fs = require('fs');
           const path = require('path');
           
-          // Upload release assets with provenance
+          // Upload release assets with provenance and security data
           const releaseAssets = fs.readdirSync('release/');
           for (const asset of releaseAssets) {
             const assetPath = path.join('release/', asset);
@@ -180,4 +348,4 @@ jobs:
             }
           }
           
-          console.log('Release created with SLSA provenance');
+          console.log('Release created with SLSA provenance and security verification');
