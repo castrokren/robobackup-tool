@@ -44,12 +44,13 @@ jobs:
         safety check --output safety-report.txt || true
 
     - name: Run Semgrep security scan
-      uses: returntocorp/semgrep-action@v1
-      with:
-        config: >-
-          p/security-audit
-          p/secrets
-          p/owasp-top-ten
+      run: |
+        # Install Semgrep using pip for Windows compatibility
+        pip install semgrep
+        # Run Semgrep with security audit rules
+        semgrep --config p/security-audit --json --output semgrep-report.json || true
+        semgrep --config p/secrets --json --output semgrep-secrets-report.json || true
+        semgrep --config p/owasp-top-ten --json --output semgrep-owasp-report.json || true
 
     - name: Upload security scan results
       uses: actions/upload-artifact@v4
@@ -60,7 +61,9 @@ jobs:
           bandit-report.txt
           safety-report.json
           safety-report.txt
-          semgrep-report.sarif
+          semgrep-report.json
+          semgrep-secrets-report.json
+          semgrep-owasp-report.json
 
   dependency-check:
     runs-on: windows-latest
@@ -148,8 +151,14 @@ jobs:
         if (Test-Path "security-results/safety-report.json") {
           echo "Safety vulnerability check completed"
         }
-        if (Test-Path "security-results/semgrep-report.sarif") {
+        if (Test-Path "security-results/semgrep-report.json") {
           echo "Semgrep security scan completed"
+        }
+        if (Test-Path "security-results/semgrep-secrets-report.json") {
+          echo "Semgrep secrets scan completed"
+        }
+        if (Test-Path "security-results/semgrep-owasp-report.json") {
+          echo "Semgrep OWASP scan completed"
         }
         echo "=== Dependency Analysis Verification ==="
         if (Test-Path "dependency-results/sbom.json") {
@@ -249,7 +258,9 @@ jobs:
           const securityFiles = [
             'security-results/bandit-report.json',
             'security-results/safety-report.json',
-            'security-results/semgrep-report.sarif',
+            'security-results/semgrep-report.json',
+            'security-results/semgrep-secrets-report.json',
+            'security-results/semgrep-owasp-report.json',
             'dependency-results/sbom.json',
             'dependency-results/pip-audit-report.json'
           ];
@@ -316,6 +327,13 @@ jobs:
           echo "✅ Safety vulnerability check present"
         } else {
           echo "❌ Safety vulnerability check missing"
+          exit 1
+        }
+        
+        if (Test-Path "release/security-results/semgrep-report.json") {
+          echo "✅ Semgrep security scan present"
+        } else {
+          echo "❌ Semgrep security scan missing"
           exit 1
         }
         
