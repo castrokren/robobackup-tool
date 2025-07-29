@@ -31,17 +31,15 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements-linux.txt
 
     - name: Run Bandit security linter
       run: |
-        pip install bandit
         bandit -r . -f json -o bandit-report.json || true
         bandit -r . -f txt -o bandit-report.txt || true
 
     - name: Run Safety check for known vulnerabilities
       run: |
-        pip install safety
         safety check --json --output safety-report.json || true
         safety check --output safety-report.txt || true
 
@@ -82,17 +80,15 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r requirements-linux.txt
 
     - name: Run pip-audit for dependency vulnerabilities
       run: |
-        pip install pip-audit
         pip-audit --format json --output pip-audit-report.json || true
         pip-audit --output pip-audit-report.txt || true
 
     - name: Generate Software Bill of Materials (SBOM)
       run: |
-        pip install cyclonedx-bom
         cyclonedx-py --format json --output sbom.json
         cyclonedx-py --format xml --output sbom.xml
 
@@ -128,8 +124,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install build wheel setuptools pyinstaller
+        pip install -r requirements-windows.txt
+        pip install build wheel setuptools
 
     - name: Download security scan results
       uses: actions/download-artifact@v4

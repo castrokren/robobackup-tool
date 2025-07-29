@@ -1,5 +1,8 @@
+# Main requirements file - use platform-specific files for CI/CD
+# For Linux: requirements-linux.txt
+# For Windows: requirements-windows.txt
+
 pyinstaller>=6.13.0
-pywin32>=306
 cryptography>=41.0.0
 pillow>=10.0.0
 pystray>=0.19.4
@@ -8,4 +11,7 @@ pyotp>=2.9.0
 numpy>=1.24.0
 psutil>=5.9.0
 urllib3>=2.0.0
-certifi>=2023.0.0 
+certifi>=2023.0.0
+
+# Windows-specific packages (install manually on Windows)
+# pywin32>=306 
