@@ -9,6 +9,6 @@ psutil==5.9.8
 urllib3==2.2.0
 certifi==2024.2.2
 bandit==1.7.7
-safety==2.3.5
+safety==3.6.0
 pip-audit==2.7.1
 cyclonedx-bom==4.0.0
