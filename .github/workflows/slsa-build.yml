@@ -99,8 +99,8 @@ jobs:
 
     - name: Generate Software Bill of Materials (SBOM)
       run: |
-        cyclonedx-py requirements-pinned.txt > sbom.json
-        cyclonedx-py requirements-pinned.txt > sbom.xml
+        cyclonedx-py requirements -i requirements-pinned.txt > sbom.json
+        cyclonedx-py requirements -i requirements-pinned.txt > sbom.xml
 
     - name: Upload dependency analysis results
       uses: actions/upload-artifact@v4
