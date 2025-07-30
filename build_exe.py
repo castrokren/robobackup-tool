@@ -20,9 +20,9 @@ def install_requirements():
     for req in requirements:
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", req])
-            print(f"✓ Installed {req}")
+            print(f"OK Installed {req}")
         except subprocess.CalledProcessError:
-            print(f"✗ Failed to install {req}")
+            print(f"FAIL Failed to install {req}")
             return False
     return True
 
@@ -39,7 +39,7 @@ def build_executable():
     try:
         # Build the executable
         subprocess.check_call([sys.executable, "setup.py", "build"])
-        print("✓ Build completed successfully")
+        print("OK Build completed successfully")
         
         # Copy executable to current directory
         build_dir = None
@@ -52,14 +52,14 @@ def build_executable():
             exe_path = os.path.join(build_dir, "RoboBackupApp.exe")
             if os.path.exists(exe_path):
                 shutil.copy2(exe_path, "RoboBackupApp.exe")
-                print("✓ Executable copied to current directory")
+                print("OK Executable copied to current directory")
                 return True
         
-        print("✗ Could not find built executable")
+        print("FAIL Could not find built executable")
         return False
         
     except subprocess.CalledProcessError as e:
-        print(f"✗ Build failed: {e}")
+        print(f"FAIL Build failed: {e}")
         return False
 
 def create_installer():
@@ -70,17 +70,17 @@ def create_installer():
     try:
         subprocess.check_call(["makensis", "/VERSION"], capture_output=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("⚠ NSIS not found. Installer creation skipped.")
+        print("WARN NSIS not found. Installer creation skipped.")
         print("  Download NSIS from: https://nsis.sourceforge.io/Download")
         return False
     
     try:
         # Create installer
         subprocess.check_call(["makensis", "installer.nsi"])
-        print("✓ Installer created successfully")
+        print("OK Installer created successfully")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"✗ Installer creation failed: {e}")
+        print(f"FAIL Installer creation failed: {e}")
         return False
 
 def main():
@@ -89,21 +89,21 @@ def main():
     
     # Install requirements
     if not install_requirements():
-        print("\n✗ Failed to install requirements")
+        print("\nFAIL Failed to install requirements")
         return 1
     
     # Build executable
     if not build_executable():
-        print("\n✗ Failed to build executable")
+        print("\nFAIL Failed to build executable")
         return 1
     
     # Create installer (optional)
     create_installer()
     
     print("\n=== Build Complete ===")
-    print("✓ RoboBackupApp.exe created")
-    print("✓ You can now run the executable with proper metadata")
-    print("✓ Right-click and 'Run as administrator' for full functionality")
+    print("OK RoboBackupApp.exe created")
+    print("OK You can now run the executable with proper metadata")
+    print("OK Right-click and 'Run as administrator' for full functionality")
     
     return 0
 
