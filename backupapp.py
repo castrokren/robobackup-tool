@@ -2092,10 +2092,19 @@ class BackupApp:
                 python_exe = sys.executable
             
             # Install the service from the correct directory
-            self.log_message(f"Installing service using: {python_exe} {service_script} install", 'info')
-            result = subprocess.run([
-                python_exe, service_script, "install"
-            ], capture_output=True, text=True, shell=True, cwd=service_dir)
+            display_cmd = f"{service_script} install" if service_script.lower().endswith('.exe') else f"{sys.executable} {service_script} install"
+            self.log_message(f"Installing service using: {display_cmd}", 'info')
+            if service_script.lower().endswith('.exe'):
+                cmd = [service_script, 'install']
+            else:
+                cmd = [sys.executable, service_script, 'install']
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                shell=True,
+                cwd=service_dir
+            )
             
             # Check both return code and stderr for errors
             if result.returncode == 0 and not result.stderr:
@@ -2110,9 +2119,17 @@ class BackupApp:
                     self.log_message(f"Warning: Could not configure service startup type: {config_result.stderr}", 'warning')
                 
                 # Start the service
-                start_result = subprocess.run([
-                    python_exe, service_script, "start"
-                ], capture_output=True, text=True, shell=True, cwd=service_dir)
+                if service_script.lower().endswith('.exe'):
+                    start_cmd = [service_script, 'start']
+                else:
+                    start_cmd = [sys.executable, service_script, 'start']
+                start_result = subprocess.run(
+                    start_cmd,
+                    capture_output=True,
+                    text=True,
+                    shell=True,
+                    cwd=service_dir
+                )
                 
                 if start_result.returncode == 0:
                     self.log_message("Backup service started successfully", 'success')
@@ -2128,9 +2145,17 @@ class BackupApp:
                 elif "already exists" in error_output:
                     self.log_message("Service already exists, attempting to start...", 'info')
                     # Try to start the existing service
-                    start_result = subprocess.run([
-                        python_exe, service_script, "start"
-                    ], capture_output=True, text=True, shell=True, cwd=service_dir)
+                    if service_script.lower().endswith('.exe'):
+                        start_cmd = [service_script, 'start']
+                    else:
+                        start_cmd = [sys.executable, service_script, 'start']
+                    start_result = subprocess.run(
+                        start_cmd,
+                        capture_output=True,
+                        text=True,
+                        shell=True,
+                        cwd=service_dir
+                    )
                     
                     if start_result.returncode == 0:
                         self.log_message("Existing backup service started successfully", 'success')
