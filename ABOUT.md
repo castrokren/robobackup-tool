@@ -143,7 +143,7 @@ Unlike many backup tools that require network drives to be mapped, RoboBackup To
 - **Performance Optimization**: Enhanced performance for large datasets
 - **Security Enhancements**: Additional security features
 - **UI/UX Improvements**: Modern interface design
-- **Cross-Platform Support**: Linux and macOS support
+- **Windows Integration**: Enhanced Windows service and PowerShell integration
 
 ## 🤝 Contributing
 

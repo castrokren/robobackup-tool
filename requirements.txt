@@ -1,5 +1,4 @@
-# Main requirements file - use platform-specific files for CI/CD
-# For Linux: requirements-linux.txt
+# Main requirements file - Windows-specific dependencies
 # For Windows: requirements-windows.txt
 
 pyinstaller>=6.13.0
