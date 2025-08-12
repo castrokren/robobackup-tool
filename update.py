@@ -25,7 +25,7 @@ def main():
     update_info = checker.check_for_updates()
     
     if update_info.get('available'):
-        print(f"\n✅ New version available: {update_info['version']}")
+        print(f"\nSUCCESS: New version available: {update_info['version']}")
         print(f"Current version: {checker.current_version}")
         
         if update_info.get('release_notes'):
@@ -42,18 +42,18 @@ def main():
             if update_file:
                 print("📦 Installing update...")
                 if checker.install_update(update_file):
-                    print("\n✅ Update installed successfully!")
+                    print("\nSUCCESS: Update installed successfully!")
                     print("🔄 Please restart the application.")
                 else:
-                    print("\n❌ Error installing update.")
+                    print("\nERROR: Error installing update.")
             else:
-                print("\n❌ Error downloading update.")
+                print("\nERROR: Error downloading update.")
         else:
             print("\n⏭️ Update cancelled.")
     else:
-        print("\n✅ No updates available.")
+        print("\nSUCCESS: No updates available.")
         if update_info.get('error'):
-            print(f"⚠️ Error: {update_info['error']}")
+            print(f"ERROR: {update_info['error']}")
     
     print("\n" + "=" * 50)
 

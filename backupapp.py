@@ -613,7 +613,7 @@ class PrivilegeManager:
     def show_manual_elevation_instructions(self):
         """Show manual instructions if automatic elevation fails"""
         instruction_text = (
-            "🔒 ADMINISTRATOR PRIVILEGES REQUIRED\n\n"
+                            "ADMINISTRATOR PRIVILEGES REQUIRED\n\n"
             "This backup application requires administrator privileges to function properly.\n\n"
             "Please restart the application as administrator:\n\n"
             "1. Close this application\n"
@@ -1104,7 +1104,7 @@ class BackupApp:
         status_frame = ttk.Frame(passcode_frame)
         status_frame.pack(fill=tk.X, pady=(0, 5))
         
-        protection_status = "🔒 PROTECTED" if self.passcode_manager.has_passcode() else "🔓 UNPROTECTED"
+        protection_status = "PROTECTED" if self.passcode_manager.has_passcode() else "UNPROTECTED"
         status_color = "green" if self.passcode_manager.has_passcode() else "red"
         self.status_label = ttk.Label(status_frame, text=f"Status: {protection_status}", 
                                foreground=status_color, font=('Segoe UI', 9, 'bold'))
@@ -2003,33 +2003,34 @@ class BackupApp:
     def check_backup_service_status(self):
         """Check if the backup service is installed and running"""
         try:
-            # Check Windows Service
+            # Check Windows Service first
             result = subprocess.run([
                 "sc", "query", "RoboBackupService"
+            ], capture_output=True, text=True, shell=False)
+            
+            if result.returncode == 0 and result.stdout.strip():
+                output = result.stdout.upper()
+                if "SERVICE_NAME" in output:
+                    if "RUNNING" in output:
+                        return "service_running"
+                    elif "STOPPED" in output:
+                        return "service_stopped"
+                    elif "START_PENDING" in output:
+                        return "service_starting"
+                    elif "STOP_PENDING" in output:
+                        return "service_stopping"
+                    else:
+                        return "service_installed"
+            
+            # If Windows Service not found, check Scheduled Task
+            result = subprocess.run([
+                "schtasks", "/Query", "/TN", "RoboBackupService"
             ], capture_output=True, text=True, shell=True)
             
             if result.returncode == 0:
-                output = result.stdout.upper()
-                if "RUNNING" in output:
-                    return "service_running"
-                elif "STOPPED" in output:
-                    return "service_stopped"
-                elif "START_PENDING" in output:
-                    return "service_starting"
-                elif "STOP_PENDING" in output:
-                    return "service_stopping"
-                else:
-                    return "service_installed"
+                return "task_installed"
             else:
-                # Check Scheduled Task as fallback
-                result = subprocess.run([
-                    "schtasks", "/Query", "/TN", "RoboBackupService"
-                ], capture_output=True, text=True, shell=True)
-                
-                if result.returncode == 0:
-                    return "task_installed"
-                else:
-                    return "not_installed"
+                return "not_installed"
                     
         except Exception as e:
             self.log_message(f"Error checking service status: {str(e)}", 'error')
@@ -2044,14 +2045,49 @@ class BackupApp:
                 self.show_manual_elevation_instructions()
                 return False
                 
+            # Log that we're running as Administrator
+            self.log_message("Running as Administrator - proceeding with service installation", 'info')
+                
             # Find the backup service script
-            possible_paths = [
+            possible_paths = []
+            
+            # For PyInstaller frozen executables, check the temporary extraction directory first
+            if getattr(sys, 'frozen', False):
+                import tempfile
+                temp_dir = tempfile.gettempdir()
+                self.log_message(f"Checking PyInstaller temp directory: {temp_dir}", 'info')
+                
+                # Look for _MEI* directories (PyInstaller temp dirs)
+                me_dirs = [item for item in os.listdir(temp_dir) if item.startswith('_MEI')]
+                self.log_message(f"Found PyInstaller temp dirs: {me_dirs}", 'info')
+                
+                for me_dir_name in me_dirs:
+                    me_dir = os.path.join(temp_dir, me_dir_name)
+                    py_script_temp = os.path.join(me_dir, "backup_service.py")
+                    self.log_message(f"Checking: {py_script_temp}", 'info')
+                    
+                    if os.path.exists(py_script_temp):
+                        possible_paths.append(py_script_temp)
+                        self.log_message(f"Found backup_service.py in PyInstaller temp dir: {py_script_temp}", 'info')
+                        break
+                    else:
+                        self.log_message(f"backup_service.py not found in: {me_dir}", 'info')
+            
+            # Add other possible paths
+            possible_paths.extend([
+                # Python script (development or source install)
                 os.path.join(os.getcwd(), "backup_service.py"),
                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "backup_service.py"),
                 os.path.join(os.path.dirname(sys.executable), "backup_service.py"),
                 os.path.join(os.path.dirname(os.path.dirname(sys.executable)), "backup_service.py"),
-                "backup_service.py"
-            ]
+                "backup_service.py",
+                # Executable (packaged PyInstaller build)
+                os.path.join(os.getcwd(), "backup_service.exe"),
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "backup_service.exe"),
+                os.path.join(os.path.dirname(sys.executable), "backup_service.exe"),
+                os.path.join(os.path.dirname(os.path.dirname(sys.executable)), "backup_service.exe"),
+                "backup_service.exe"
+            ])
             
             service_script = None
             for path in possible_paths:
@@ -2062,12 +2098,21 @@ class BackupApp:
             if not service_script:
                 # Try to copy the file from the source directory
                 source_dir = os.path.dirname(os.path.dirname(sys.executable))
-                source_script = os.path.join(source_dir, "backup_service.py")
+                source_script_py = os.path.join(source_dir, "backup_service.py")
+                source_script_exe = os.path.join(source_dir, "backup_service.exe")
                 
-                if os.path.exists(source_script):
-                    import shutil
+                import shutil
+                if os.path.exists(source_script_exe):
                     try:
-                        shutil.copy2(source_script, os.getcwd())
+                        shutil.copy2(source_script_exe, os.getcwd())
+                        service_script = os.path.join(os.getcwd(), "backup_service.exe")
+                        self.log_message(f"Copied backup_service.exe from source to current directory", 'info')
+                    except Exception as e:
+                        self.log_message(f"Failed to copy backup_service.exe: {str(e)}", 'error')
+                        return False
+                elif os.path.exists(source_script_py):
+                    try:
+                        shutil.copy2(source_script_py, os.getcwd())
                         service_script = os.path.join(os.getcwd(), "backup_service.py")
                         self.log_message(f"Copied backup_service.py from source to current directory", 'info')
                     except Exception as e:
@@ -2092,12 +2137,19 @@ class BackupApp:
                 python_exe = sys.executable
             
             # Install the service from the correct directory
-            display_cmd = f"{service_script} install" if service_script.lower().endswith('.exe') else f"{sys.executable} {service_script} install"
-            self.log_message(f"Installing service using: {display_cmd}", 'info')
             if service_script.lower().endswith('.exe'):
                 cmd = [service_script, 'install']
+                display_cmd = f"{service_script} install"
             else:
+                # Use the current Python interpreter
                 cmd = [sys.executable, service_script, 'install']
+                display_cmd = f"{sys.executable} {service_script} install"
+            
+            self.log_message(f"Installing service using: {display_cmd}", 'info')
+            self.log_message(f"Working directory: {service_dir}", 'info')
+            self.log_message(f"Current working directory: {os.getcwd()}", 'info')
+            self.log_message(f"Python executable: {sys.executable}", 'info')
+            self.log_message(f"Service script: {service_script}", 'info')
             result = subprocess.run(
                 cmd,
                 capture_output=True,
@@ -2106,37 +2158,51 @@ class BackupApp:
                 cwd=service_dir
             )
             
+            # Log the command results for debugging
+            self.log_message(f"Service installation return code: {result.returncode}", 'info')
+            if result.stdout:
+                self.log_message(f"Service installation stdout: {result.stdout}", 'info')
+            if result.stderr:
+                self.log_message(f"Service installation stderr: {result.stderr}", 'info')
+            
             # Check both return code and stderr for errors
-            if result.returncode == 0 and not result.stderr:
-                self.log_message("Backup service installed successfully", 'success')
-                
-                # Configure the service to start automatically
-                config_result = subprocess.run([
-                    "sc", "config", "RoboBackupService", "start=auto"
-                ], capture_output=True, text=True, shell=True)
-                
-                if config_result.returncode != 0:
-                    self.log_message(f"Warning: Could not configure service startup type: {config_result.stderr}", 'warning')
-                
-                # Start the service
-                if service_script.lower().endswith('.exe'):
-                    start_cmd = [service_script, 'start']
+            if result.returncode == 0:
+                # Also check if there are any error messages in stdout
+                error_in_output = any(error in result.stdout.lower() for error in ['error', 'denied', 'failed', 'access is denied'])
+                if not error_in_output:
+                    self.log_message("Backup service installed successfully", 'success')
+                    
+                    # Configure the service to start automatically
+                    config_result = subprocess.run([
+                        "sc", "config", "RoboBackupService", "start=auto"
+                    ], capture_output=True, text=True, shell=True)
+                    
+                    if config_result.returncode != 0:
+                        self.log_message(f"Warning: Could not configure service startup type: {config_result.stderr}", 'warning')
+                    
+                    # Start the service
+                    if service_script.lower().endswith('.exe'):
+                        start_cmd = [service_script, 'start']
+                    else:
+                        # Use the current Python interpreter
+                        start_cmd = [sys.executable, service_script, 'start']
+                    start_result = subprocess.run(
+                        start_cmd,
+                        capture_output=True,
+                        text=True,
+                        shell=True,
+                        cwd=service_dir
+                    )
+                    
+                    if start_result.returncode == 0:
+                        self.log_message("Backup service started successfully", 'success')
+                        return True
+                    else:
+                        self.log_message(f"Service installed but failed to start: {start_result.stderr}", 'warning')
+                        return True
                 else:
-                    start_cmd = [sys.executable, service_script, 'start']
-                start_result = subprocess.run(
-                    start_cmd,
-                    capture_output=True,
-                    text=True,
-                    shell=True,
-                    cwd=service_dir
-                )
-                
-                if start_result.returncode == 0:
-                    self.log_message("Backup service started successfully", 'success')
-                    return True
-                else:
-                    self.log_message(f"Service installed but failed to start: {start_result.stderr}", 'warning')
-                    return True
+                    self.log_message(f"Service installation failed: {result.stdout}", 'error')
+                    return False
             else:
                 # Check for specific error messages
                 error_output = result.stderr if result.stderr else result.stdout
@@ -2148,6 +2214,7 @@ class BackupApp:
                     if service_script.lower().endswith('.exe'):
                         start_cmd = [service_script, 'start']
                     else:
+                        # Use the current Python interpreter
                         start_cmd = [sys.executable, service_script, 'start']
                     start_result = subprocess.run(
                         start_cmd,
@@ -2654,15 +2721,15 @@ class BackupApp:
     def show_protection_help(self):
         """Show help dialog explaining the protection system"""
         help_text = (
-            "🔒 Settings Protection System\n\n"
+            "Settings Protection System\n\n"
             "This application uses passcode protection to secure sensitive operations.\n\n"
-            "🔒 Protected Actions (require passcode):\n"
+            "Protected Actions (require passcode):\n"
             "• Changing source/destination paths\n"
             "• Modifying backup flags\n"
             "• Adding/removing scheduled backups\n"
             "• Enabling/disabling startup with Windows\n"
             "• Auto-saving settings\n\n"
-            "🔓 Unprotected Actions:\n"
+            "Unprotected Actions:\n"
             "• Running immediate backups\n"
             "• Viewing logs\n"
             "• Testing connections\n\n"
@@ -2674,7 +2741,7 @@ class BackupApp:
     def refresh_protection_status(self):
         """Refresh the protection status indicator"""
         if hasattr(self, 'status_label'):
-            protection_status = "🔒 PROTECTED" if self.passcode_manager.has_passcode() else "🔓 UNPROTECTED"
+            protection_status = "PROTECTED" if self.passcode_manager.has_passcode() else "UNPROTECTED"
             status_color = "green" if self.passcode_manager.has_passcode() else "red"
             self.status_label.config(text=f"Status: {protection_status}", foreground=status_color)
             self.log_message(f"Protection status updated: {protection_status}", 'info')

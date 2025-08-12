@@ -1,72 +1,84 @@
-import sys
+#!/usr/bin/env python3
+"""
+Build script for RoboBackup Tool executable using PyInstaller
+"""
+
 import os
-from cx_Freeze import setup, Executable
+import sys
+import subprocess
+import shutil
 
-# Dependencies are automatically detected, but it might need fine tuning.
-build_exe_options = {
-    "packages": [
-        "tkinter", 
-        "os", 
-        "sys", 
-        "json", 
-        "subprocess", 
-        "threading", 
-        "datetime", 
-        "time",
-        "win32api",
-        "win32con",
-        "win32netcon",
-        "win32wnet",
-        "cryptography",
-        "hashlib",
-        "secrets",
-        "stat",
-        "shutil",
-        "glob",
-        "logging",
-        "pystray",
-        "PIL",
-        "qrcode",
-        "pyotp",
-        "numpy",
-        "psutil",
-        "urllib3",
-        "certifi"
-    ],
-    "excludes": [],
-    "include_files": [
-        ("assets/robot_copier.ico", "robot_copier.ico"),
-        ("config/", "config/"),
-        ("logs/", "logs/"),
-        ("app.manifest", "app.manifest")
-    ] if os.path.exists("app.manifest") else [
-        ("assets/robot_copier.ico", "robot_copier.ico"),
-        ("config/", "config/"),
-        ("logs/", "logs/")
+def build_executable():
+    """Build the executable using PyInstaller"""
+    print("Building executable with PyInstaller...")
+    
+    # Clean previous builds
+    if os.path.exists("build"):
+        shutil.rmtree("build")
+    if os.path.exists("dist"):
+        shutil.rmtree("dist")
+    
+    # PyInstaller command
+    cmd = [
+        sys.executable, "-m", "PyInstaller",
+        "--onefile",
+        "--windowed",  # No console window
+        "--name=RoboBackupApp"
     ]
-}
+    
+    # Add icon if it exists
+    if os.path.exists("assets/robot_copier.ico"):
+        cmd.append("--icon=assets/robot_copier.ico")
+    
+    # Add data files
+    cmd.extend([
+        "--add-data=assets/robot_copier.ico;.",
+        "--add-data=backup_service.py;.",
+        "--add-data=service_manager.bat;.",
+        "--add-data=install_service.bat;.",
+        "--add-data=create_scheduled_task.ps1;.",
 
-# GUI applications require a different base on Windows
-base = None
-if sys.platform == "win32":
-    base = "Win32GUI"
+        "--add-data=config;config",
+        "--add-data=logs;logs",
+        "backupapp.py"
+    ])
+    
+    # Remove None values
+    cmd = [arg for arg in cmd if arg is not None]
+    
+    try:
+        subprocess.check_call(cmd)
+        print("OK Build completed successfully")
+        
+        # Copy executable to current directory
+        exe_path = os.path.join("dist", "RoboBackupApp.exe")
+        if os.path.exists(exe_path):
+            shutil.copy2(exe_path, "RoboBackupApp.exe")
+            print("OK Executable copied to current directory")
+            return True
+        
+        print("FAIL Could not find built executable")
+        return False
+        
+    except subprocess.CalledProcessError as e:
+        print(f"FAIL Build failed: {e}")
+        return False
 
-setup(
-    name="RoboBackup Tool",
-    version="1.0.0",
-    description="Secure Backup Application with Network Support",
-    author="Your Name",
-    author_email="your.email@example.com",
-    options={"build_exe": build_exe_options},
-    executables=[
-        Executable(
-            "backupapp.py", 
-            base=base,
-            icon="assets/robot_copier.ico" if os.path.exists("assets/robot_copier.ico") else None,
-            target_name="RoboBackupApp.exe",
-            shortcut_name="RoboBackup Tool",
-            shortcut_dir="DesktopFolder",
-            manifest="app.manifest" if os.path.exists("app.manifest") else None
-        )
-    ]
-) 
+def main():
+    """Main build process"""
+    print("=== RoboBackup Tool Build Process ===\n")
+    
+    # Build executable
+    if not build_executable():
+        print("\nFAIL Failed to build executable")
+        return 1
+    
+    print("\n=== Build Complete ===")
+    print("OK RoboBackupApp.exe created")
+    print("OK You can now run the executable with proper metadata")
+    print("OK Right-click and 'Run as administrator' for full functionality")
+    
+    return 0
+
+if __name__ == "__main__":
+    sys.exit(main()) 

@@ -39,7 +39,17 @@ class BackupService(win32serviceutil.ServiceFramework):
         # Ensure args has at least one element for ServiceFramework
         if not args:
             args = ['backup_service.py']
-        win32serviceutil.ServiceFramework.__init__(self, args)
+        
+        # Only initialize ServiceFramework if we're running as a service
+        # When running as a service, sys.argv has only one element
+        # When running installation commands, sys.argv has multiple elements
+        if len(sys.argv) == 1:
+            win32serviceutil.ServiceFramework.__init__(self, args)
+        else:
+            # For installation/removal commands, don't initialize the service framework
+            # This prevents the "service name is not hosted by this process" error
+            pass
+            
         self.stop_event = win32event.CreateEvent(None, 0, 0, None)
         self.running = False
         self.scheduler_thread = None
@@ -73,21 +83,30 @@ class BackupService(win32serviceutil.ServiceFramework):
         """Run the service"""
         self.logger.info("Starting RoboBackup Service...")
         self.running = True
-        self.main()
+        
+        # Report that we're starting
+        self.ReportServiceStatus(win32service.SERVICE_START_PENDING)
+        
+        try:
+            self.main()
+        except Exception as e:
+            self.logger.error(f"Service failed to start: {str(e)}")
+            self.ReportServiceStatus(win32service.SERVICE_STOPPED)
+            raise
         
     def load_settings(self):
         """Load settings from the encrypted settings file"""
         try:
             settings_file = Path("config/settings.encrypted")
             if not settings_file.exists():
-                self.logger.warning("Settings file not found")
-                return {}
+                self.logger.info("Settings file not found, using default settings")
+                return {"scheduled_backups": []}
                 
             # Load encryption key
             key_file = Path("config/credential_key.key")
             if not key_file.exists():
-                self.logger.error("Encryption key not found")
-                return {}
+                self.logger.info("Encryption key not found, using default settings")
+                return {"scheduled_backups": []}
                 
             with open(key_file, 'rb') as f:
                 key = f.read()
@@ -221,6 +240,10 @@ class BackupService(win32serviceutil.ServiceFramework):
         try:
             # Load encryption key
             key_file = Path("config/credential_key.key")
+            if not key_file.exists():
+                self.logger.info("Encryption key not found, skipping save")
+                return
+                
             with open(key_file, 'rb') as f:
                 key = f.read()
                 
@@ -251,6 +274,9 @@ class BackupService(win32serviceutil.ServiceFramework):
     def main(self):
         """Main service loop"""
         try:
+            # Report that we're running
+            self.ReportServiceStatus(win32service.SERVICE_RUNNING)
+            
             # Start scheduler thread
             self.scheduler_thread = threading.Thread(target=self.scheduler_thread, daemon=True)
             self.scheduler_thread.start()
@@ -265,8 +291,11 @@ class BackupService(win32serviceutil.ServiceFramework):
                     
         except Exception as e:
             self.logger.error(f"Service error: {str(e)}")
+            self.ReportServiceStatus(win32service.SERVICE_STOPPED)
+            raise
         finally:
             self.logger.info("RoboBackup Service stopped")
+            self.ReportServiceStatus(win32service.SERVICE_STOPPED)
 
 
 def run_as_service():

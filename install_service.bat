@@ -17,24 +17,24 @@ cd /d "%~dp0"
 
 REM Install the service
 echo Installing RoboBackup Service...
-python backup_service.py install
+backup_service.exe install
 
 if %errorLevel% == 0 (
     echo Service installed successfully
     echo.
     echo To start the service, run:
-    echo   python backup_service.py start
+    echo   backup_service.exe start
     echo.
     echo To stop the service, run:
-    echo   python backup_service.py stop
+    echo   backup_service.exe stop
     echo.
     echo To remove the service, run:
-    echo   python backup_service.py remove
+    echo   backup_service.exe remove
     echo.
     echo The service will now run scheduled backups even when you're not logged in.
 ) else (
     echo ERROR: Failed to install service
-    echo Please check that Python and pywin32 are installed
+    echo Please check that backup_service.exe is present
 )
 
 pause 
