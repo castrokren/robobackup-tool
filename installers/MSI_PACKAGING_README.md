@@ -239,7 +239,28 @@ The `wix-setup.wxs` file can be customized for:
 
 ### Common Issues
 
-1. **WiX Toolset Not Found**:
+1. **Admin Error During Installation (MOST COMMON)**:
+   - **Symptoms**: "Administrator privileges required" error even when logged in as admin
+   - **Cause**: UAC (User Account Control) blocking MSI installation or missing InstallPrivileges
+   - **Solutions**:
+     - Use the provided PowerShell installer: `installers\install-msi-admin.ps1`
+     - Right-click MSI file → "Run as administrator"
+     - Command line: `msiexec /i RoboBackupTool-1.0.0.0.msi /quiet /l*v install.log`
+     - Ensure UAC is enabled (counter-intuitive but required for proper elevation)
+
+2. **"Run as Administrator" Option Missing**:
+   - Add registry entry to enable context menu option:
+   ```cmd
+   reg add "HKEY_CLASSES_ROOT\Msi.Package\shell\runas" /ve /d "Install as &Administrator" /f
+   reg add "HKEY_CLASSES_ROOT\Msi.Package\shell\runas\command" /ve /d "msiexec /i \"%%1\"" /f
+   ```
+
+3. **UAC Completely Blocking Installation**:
+   - Temporarily lower UAC settings in Control Panel → User Accounts
+   - Use PowerShell with `-ExecutionPolicy Bypass`
+   - Contact IT administrator for group policy exceptions
+
+4. **WiX Toolset Not Found**:
    - Ensure WiX is installed and in PATH
    - Verify installation: `candle.exe --version`
 

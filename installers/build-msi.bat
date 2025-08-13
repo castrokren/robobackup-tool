@@ -6,14 +6,20 @@ echo RoboBackup Tool MSI Installer Builder
 echo ========================================
 
 :: Check if WiX Toolset is installed
-set "WIX_PATH=C:\Program Files\WiX Toolset v6.0\bin"
+set "WIX_PATH=C:\Program Files\WiX Toolset v4.0\bin"
 if not exist "%WIX_PATH%\wix.exe" (
-    echo ERROR: WiX Toolset v6.0 not found at %WIX_PATH%!
-    echo Please install WiX Toolset v6.0 from: https://wixtoolset.org/releases/
-    pause
-    exit /b 1
+    set "WIX_PATH=C:\Program Files\WiX Toolset v6.0\bin"
+    if not exist "%WIX_PATH%\wix.exe" (
+        echo ERROR: WiX Toolset not found!
+        echo Please install WiX Toolset v4.0 or v6.0 from: https://wixtoolset.org/releases/
+        echo Note: This MSI requires WiX v4+ for proper UAC handling
+        pause
+        exit /b 1
+    )
+    echo WiX Toolset v6.0 found at: %WIX_PATH%
+) else (
+    echo WiX Toolset v4.0 found at: %WIX_PATH%
 )
-echo WiX Toolset v6.0 found at: %WIX_PATH%
 
 :: Check if PyInstaller is available
 where pyinstaller.exe >nul 2>&1
@@ -125,6 +131,18 @@ echo - Desktop shortcut
 echo - Automatic service installation and startup
 echo.
 echo To install, run the MSI file as Administrator.
+echo.
+echo IMPORTANT INSTALLATION NOTES:
+echo ========================================
+echo 1. Right-click the MSI file and select "Run as administrator"
+echo 2. If UAC prompt appears, click "Yes" to allow installation
+echo 3. For silent installation: msiexec /i RoboBackupTool-%VERSION%.msi /quiet
+echo 4. For enterprise deployment, use: msiexec /i RoboBackupTool-%VERSION%.msi /quiet /norestart
+echo.
+echo Common Issues:
+echo - "Admin error" despite being admin: Use "Run as administrator" context menu
+echo - UAC blocking: Ensure UAC is enabled and click "Yes" when prompted
+echo - Group Policy restrictions: Contact IT administrator
 echo.
 
 :: Clean up temporary files

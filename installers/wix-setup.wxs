@@ -5,7 +5,9 @@
              Manufacturer="RoboBackup Development Team"
              UpgradeCode="dddb19d1-da76-4e5b-9b63-a92b2204c4a4"
              Language="1033"
-             Compressed="yes">
+             Compressed="yes"
+             InstallPrivileges="elevated"
+             InstallScope="perMachine">
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of RoboBackup Tool is already installed." />
     
@@ -137,6 +139,13 @@
     
     <!-- UI Properties -->
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    
+    <!-- UAC and Admin Properties -->
+    <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
+    <Property Id="ALLUSERS" Value="1" />
+    
+    <!-- UI Reference for standard installation dialogs -->
+    <UIRef Id="WixUI_InstallDir" />
     
     </Package>
 </Wix>
