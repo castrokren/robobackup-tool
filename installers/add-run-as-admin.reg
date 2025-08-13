@@ -1,0 +1,20 @@
+Windows Registry Editor Version 5.00
+
+; Adds "Run as administrator" context menu option for MSI files
+; This registry file must be run as Administrator to take effect
+
+[HKEY_CLASSES_ROOT\Msi.Package\shell\runas]
+@="Install as &Administrator"
+
+[HKEY_CLASSES_ROOT\Msi.Package\shell\runas\command]
+@="msiexec /i \"%1\""
+
+; Alternative method for .msi file extension
+[HKEY_CLASSES_ROOT\.msi\OpenWithProgids]
+"Msi.Package"=""
+
+[HKEY_CLASSES_ROOT\Msi.Package\shell\Install]
+@="&Install"
+
+[HKEY_CLASSES_ROOT\Msi.Package\shell\Install\command]
+@="msiexec /i \"%1\""

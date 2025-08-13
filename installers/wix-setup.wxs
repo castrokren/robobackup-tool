@@ -11,6 +11,7 @@
     
     <MediaTemplate EmbedCab="yes" />
 
+    <!-- Per-machine installation (ProgramFilesFolder) - Admin privileges required -->
     <StandardDirectory Id="ProgramFilesFolder">
         <Directory Id="INSTALLFOLDER" Name="RoboBackup Tool">
             
@@ -67,29 +68,12 @@
                 </Component>
             </Directory>
             
-            <!-- Windows Service Installation -->
-            <Component Id="BackupService" Guid="11111111-1111-1111-1111-111111111111">
-                <ServiceInstall Id="BackupServiceInstall"
-                               Type="ownProcess"
-                               Name="RoboBackupService"
-                               DisplayName="RoboBackup Service"
-                               Description="RoboBackup Tool Windows Service for automated backup operations"
-                               Start="auto"
-                               ErrorControl="normal"
-                               Account="LocalSystem" />
-                
-                <ServiceControl Id="StartBackupService"
-                               Start="install"
-                               Stop="both"
-                               Remove="uninstall"
-                               Name="RoboBackupService"
-                               Wait="yes" />
-            </Component>
+
         </Directory>
     </StandardDirectory>
     
-    <!-- Start Menu Shortcuts -->
-    <StandardDirectory Id="ProgramMenuFolder">
+    <!-- Start Menu Shortcuts - Per User -->
+    <StandardDirectory Id="StartMenuFolder">
         <Directory Id="ProgramMenuDir" Name="RoboBackup Tool">
             <Component Id="StartMenuShortcuts" Guid="22222222-2222-2222-2222-222222222222">
                 <Shortcut Id="StartMenuBackupApp" 
@@ -98,19 +82,12 @@
                           Target="[INSTALLFOLDER]backupapp.exe"
                           WorkingDirectory="INSTALLFOLDER" />
                 
-                <Shortcut Id="StartMenuServiceManager" 
-                          Name="Service Manager" 
-                          Description="Manage RoboBackup Service"
-                          Target="[INSTALLFOLDER]backup_service.exe"
-                          Arguments="--service-manager"
-                          WorkingDirectory="INSTALLFOLDER" />
-                
                 <RemoveFolder Id="ProgramMenuDir" On="uninstall" />
             </Component>
         </Directory>
     </StandardDirectory>
     
-    <!-- Desktop Shortcut -->
+    <!-- Desktop Shortcut - Per User -->
     <StandardDirectory Id="DesktopFolder">
         <Component Id="DesktopShortcut" Guid="33333333-3333-3333-3333-333333333333">
             <Shortcut Id="DesktopBackupApp" 
@@ -130,13 +107,36 @@
         <ComponentRef Id="MainApplication" />
         <ComponentRef Id="AssetsComponent" />
         <ComponentRef Id="ConfigComponent" />
-        <ComponentRef Id="BackupService" />
         <ComponentRef Id="StartMenuShortcuts" />
         <ComponentRef Id="DesktopShortcut" />
+        <ComponentRef Id="RegistryEntries" />
     </Feature>
     
-    <!-- UI Properties -->
+        <!-- UI Properties -->
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    
+    <!-- UAC and Admin Properties -->
+    <Property Id="MSIUSEREALADMINDETECTION" Value="1" />
+    <Property Id="INSTALL_PRIVILEGES" Value="elevated" />
+    <Property Id="INSTALL_SCOPE" Value="perMachine" />
+
+    <!-- Include WiX UI -->
+    <UIRef Id="WixUI_InstallDir" />
+
+    <!-- Registry entries for uninstall information -->
+    <DirectoryRef Id="INSTALLFOLDER">
+        <Component Id="RegistryEntries" Guid="55555555-5555-5555-5555-555555555555">
+            <RegistryKey Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\RoboBackup Tool">
+                <RegistryValue Name="DisplayName" Value="RoboBackup Tool" Type="string" />
+                <RegistryValue Name="DisplayVersion" Value="1.0.0.0" Type="string" />
+                <RegistryValue Name="Publisher" Value="RoboBackup Development Team" Type="string" />
+                <RegistryValue Name="InstallLocation" Value="[INSTALLFOLDER]" Type="string" />
+                <RegistryValue Name="UninstallString" Value="msiexec /x [ProductCode]" Type="string" />
+                <RegistryValue Name="NoModify" Value="1" Type="integer" />
+                <RegistryValue Name="NoRepair" Value="1" Type="integer" />
+            </RegistryKey>
+        </Component>
+    </DirectoryRef>
     
     </Package>
 </Wix>

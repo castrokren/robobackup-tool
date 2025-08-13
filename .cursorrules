@@ -1,0 +1,12 @@
+# Cursor Agent Rules
+- Always produce **unified diffs** instead of rewriting full files.
+- Only modify files explicitly mentioned in the request.
+- After changes:
+  - Run `eslint` and `prettier` (JS/TS)
+  - Or `black` and `flake8` (Python)
+- Follow **Conventional Commit** format:
+  - feat: for new features
+  - fix: for bug fixes
+  - refactor: for code changes that neither fix a bug nor add a feature
+- Prefer minimal, targeted changes unless told otherwise.
+- If unclear on a request, **ask clarifying questions before coding**.

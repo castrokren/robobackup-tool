@@ -1,12 +1,15 @@
+#!/usr/bin/env python3
+"""
+RoboBackup Tool - Main Entry Point
+Professional Windows Backup Solution
+"""
+
 import sys
 import os
-import logging
+from utils.logging_utils import setup_logging, get_logger, log_exception, log_system_info
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-def check_for_updates():
+def check_for_updates(logger):
     """Check for updates on startup"""
     try:
         from update_gui import check_for_updates_gui
@@ -20,22 +23,173 @@ def check_for_updates():
             return None
             
     except Exception as e:
-        logger.error(f"Error checking for updates: {e}")
+        log_exception(logger, f"Error checking for updates: {e}")
         return None
+
+
+def validate_environment(logger):
+    """Validate the runtime environment"""
+    try:
+        # Check Python version
+        if sys.version_info < (3, 8):
+            logger.error(f"Python 3.8+ required, current version: {sys.version}")
+            return False
+        
+        # Check if we're on Windows
+        if sys.platform != "win32":
+            logger.error("This application is designed for Windows only")
+            return False
+        
+        # Check for critical dependencies
+        critical_modules = ['tkinter', 'PIL', 'pystray']
+        missing_modules = []
+        
+        for module in critical_modules:
+            try:
+                __import__(module)
+            except ImportError:
+                missing_modules.append(module)
+        
+        if missing_modules:
+            logger.error(f"Missing critical dependencies: {', '.join(missing_modules)}")
+            return False
+        
+        logger.info("Environment validation passed")
+        return True
+        
+    except Exception as e:
+        log_exception(logger, "Failed to validate environment")
+        return False
+
+
+def is_admin():
+    """Check if the current process is running with administrator privileges"""
+    try:
+        import ctypes
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+
+def print_usage():
+    """Print usage information for the unified executable"""
+    print("\nRoboBackup Tool - Unified Backup Solution")
+    print("=========================================")
+    print("\nUsage:")
+    print("  RoboBackup.exe                    Start GUI application (default)")
+    print("  RoboBackup.exe service            Run as service")
+    print("  RoboBackup.exe install            Install Windows Service")
+    print("  RoboBackup.exe start              Start Windows Service")
+    print("  RoboBackup.exe stop               Stop Windows Service")
+    print("  RoboBackup.exe remove             Remove Windows Service")
+    print("  RoboBackup.exe --standalone        Run service in standalone mode")
+    print("  RoboBackup.exe help               Show this help")
+    print("\nService Commands:")
+    print("  install, update, remove, start, stop, restart, debug")
+    print("\nNote: Service commands require administrator privileges")
+    if not is_admin():
+        print("WARNING: Currently not running as administrator!")
+
 
 def main():
     """Main application entry point"""
-    # Check for updates (GUI dialog will show if updates are available)
-    update_result = check_for_updates()
+    # Initialize logging
+    logger = setup_logging(
+        log_level="INFO",
+        log_dir="logs",
+        enable_console=True,
+        enable_colors=True
+    )
     
-    if len(sys.argv) > 1 and sys.argv[1] == "service":
-        # Run as service
-        import backup_service
-        backup_service.main()  # Or: win32serviceutil.HandleCommandLine(backup_service.BackupService)
-    else:
-        # Run GUI
-        import backupapp
-        backupapp.run_gui()  # <-- You need to define this in backupapp.py
+    logger.info("=== RoboBackup Tool Starting ===")
+    log_system_info(logger)
+    
+    try:
+        # Validate environment
+        if not validate_environment(logger):
+            logger.critical("Environment validation failed. Exiting.")
+            sys.exit(1)
+        
+        # Check for updates (GUI dialog will show if updates are available)
+        update_result = check_for_updates(logger)
+        
+        # Determine run mode based on command line arguments
+        if len(sys.argv) > 1:
+            command = sys.argv[1].lower()
+            
+            # Windows Service commands
+            if command in ["install", "update", "remove", "start", "stop", "restart", "debug"]:
+                logger.info(f"Executing Windows Service command: {command}")
+                
+                # Check admin privileges for service commands
+                if not is_admin():
+                    logger.error("Administrator privileges required for service commands")
+                    print("\nERROR: Administrator privileges required!")
+                    print("Please run the command prompt as Administrator and try again.")
+                    print("Or right-click on RoboBackup.exe and select 'Run as administrator'")
+                    sys.exit(1)
+                
+                try:
+                    import backup_service
+                    backup_service.run_as_service()
+                    logger.info(f"Service command '{command}' completed successfully")
+                except Exception as e:
+                    log_exception(logger, f"Failed to execute service command '{command}'")
+                    print(f"\nService operation failed: {e}")
+                    sys.exit(1)
+                    
+            elif command == "service":
+                logger.info("Starting in service mode")
+                try:
+                    import backup_service
+                    if hasattr(backup_service, 'run_as_service'):
+                        backup_service.run_as_service()
+                    else:
+                        backup_service.main()
+                except Exception as e:
+                    log_exception(logger, "Failed to start service")
+                    sys.exit(1)
+                    
+            elif command in ["--standalone"]:
+                logger.info("Starting service in standalone mode")
+                try:
+                    import backup_service
+                    backup_service.run_standalone()
+                except Exception as e:
+                    log_exception(logger, "Failed to start standalone service")
+                    sys.exit(1)
+                    
+            elif command in ["--help", "-h", "help"]:
+                print_usage()
+                sys.exit(0)
+                
+            else:
+                logger.warning(f"Unknown command: {command}")
+                print_usage()
+                sys.exit(1)
+        else:
+            # No arguments - start GUI mode
+            logger.info("Starting in GUI mode")
+            try:
+                import backupapp
+                if hasattr(backupapp, 'run_gui'):
+                    backupapp.run_gui()
+                else:
+                    logger.error("run_gui function not found in backupapp module")
+                    sys.exit(1)
+            except Exception as e:
+                log_exception(logger, "Failed to start GUI")
+                sys.exit(1)
+                
+    except KeyboardInterrupt:
+        logger.info("Application interrupted by user")
+        sys.exit(0)
+    except Exception as e:
+        log_exception(logger, "Unexpected error in main application")
+        sys.exit(1)
+    finally:
+        logger.info("=== RoboBackup Tool Shutting Down ===")
+
 
 if __name__ == "__main__":
     main()

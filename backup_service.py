@@ -38,17 +38,10 @@ class BackupService(win32serviceutil.ServiceFramework):
     def __init__(self, args):
         # Ensure args has at least one element for ServiceFramework
         if not args:
-            args = ['backup_service.py']
+            args = [__file__]
         
-        # Only initialize ServiceFramework if we're running as a service
-        # When running as a service, sys.argv has only one element
-        # When running installation commands, sys.argv has multiple elements
-        if len(sys.argv) == 1:
-            win32serviceutil.ServiceFramework.__init__(self, args)
-        else:
-            # For installation/removal commands, don't initialize the service framework
-            # This prevents the "service name is not hosted by this process" error
-            pass
+        # Always initialize ServiceFramework for proper service operations
+        win32serviceutil.ServiceFramework.__init__(self, args)
             
         self.stop_event = win32event.CreateEvent(None, 0, 0, None)
         self.running = False
@@ -300,12 +293,21 @@ class BackupService(win32serviceutil.ServiceFramework):
 
 def run_as_service():
     """Run the service using Windows Service Manager"""
-    if len(sys.argv) == 1:
-        servicemanager.Initialize()
-        servicemanager.PrepareToHostSingle(BackupService)
-        servicemanager.StartServiceCtrlDispatcher()
-    else:
-        win32serviceutil.HandleCommandLine(BackupService)
+    try:
+        if len(sys.argv) == 1:
+            # Running as actual service
+            servicemanager.Initialize()
+            servicemanager.PrepareToHostSingle(BackupService)
+            servicemanager.StartServiceCtrlDispatcher()
+        else:
+            # Handle service commands (install, start, stop, etc.)
+            print(f"Processing service command: {' '.join(sys.argv[1:])}")
+            win32serviceutil.HandleCommandLine(BackupService)
+    except Exception as e:
+        print(f"Service operation failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 def run_standalone():

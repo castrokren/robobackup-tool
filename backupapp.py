@@ -41,7 +41,7 @@ import urllib.parse
 import pyotp
 import qrcode
 from io import BytesIO
-import ntpath
+
 import secrets
 import binascii
 import getpass
@@ -74,14 +74,8 @@ try:
 except Exception:
     pass
 
-def is_unc_path(path: str) -> bool:
-    """
-    Return True if `path` is a UNC network path (\\\\server\\share\\...).
-    Handles both slashes, normalizes, and uses ntpath.splitdrive for robust detection.
-    """
-    p = path.replace('/', '\\')
-    drive, _ = ntpath.splitdrive(p)
-    return drive.startswith('\\\\')
+# Import UNC path utility
+from utils.path_utils import is_unc_path
 
 # Check for required packages
 try:

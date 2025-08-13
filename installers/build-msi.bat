@@ -6,14 +6,20 @@ echo RoboBackup Tool MSI Installer Builder
 echo ========================================
 
 :: Check if WiX Toolset is installed
-set "WIX_PATH=C:\Program Files\WiX Toolset v6.0\bin"
+set "WIX_PATH=C:\Program Files\WiX Toolset v4.0\bin"
 if not exist "%WIX_PATH%\wix.exe" (
-    echo ERROR: WiX Toolset v6.0 not found at %WIX_PATH%!
-    echo Please install WiX Toolset v6.0 from: https://wixtoolset.org/releases/
-    pause
-    exit /b 1
+    set "WIX_PATH=C:\Program Files\WiX Toolset v6.0\bin"
+    if not exist "%WIX_PATH%\wix.exe" (
+        echo ERROR: WiX Toolset not found!
+        echo Please install WiX Toolset v4.0 or v6.0 from: https://wixtoolset.org/releases/
+        echo Note: This MSI requires WiX v4+ for proper UAC handling
+        pause
+        exit /b 1
+    )
+    echo WiX Toolset v6.0 found at: %WIX_PATH%
+) else (
+    echo WiX Toolset v4.0 found at: %WIX_PATH%
 )
-echo WiX Toolset v6.0 found at: %WIX_PATH%
 
 :: Check if PyInstaller is available
 where pyinstaller.exe >nul 2>&1
@@ -41,27 +47,9 @@ if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
 
 :: Build main application
 echo Building main application...
-pyinstaller --onefile --windowed --icon="%PROJECT_ROOT%\assets\robot_copier.ico" --name="backupapp" "%PROJECT_ROOT%\backupapp.py"
+pyinstaller --onefile --windowed --icon="%PROJECT_ROOT%\assets\robot_copier.ico" --name="RoboBackupApp" "%PROJECT_ROOT%\backupapp.py"
 if %errorlevel% neq 0 (
     echo ERROR: Failed to build main application!
-    pause
-    exit /b 1
-)
-
-:: Build service executable
-echo Building service executable...
-pyinstaller --onefile --console --icon="%PROJECT_ROOT%\assets\robot_copier.ico" --name="backup_service" "%PROJECT_ROOT%\backup_service.py"
-if %errorlevel% neq 0 (
-    echo ERROR: Failed to build service executable!
-    pause
-    exit /b 1
-)
-
-:: Build core module
-echo Building core module...
-pyinstaller --onefile --console --icon="%PROJECT_ROOT%\assets\robot_copier.ico" --name="backup_core" "%PROJECT_ROOT%\backup_core.py"
-if %errorlevel% neq 0 (
-    echo ERROR: Failed to build core module!
     pause
     exit /b 1
 )
@@ -76,9 +64,7 @@ if exist "%MSI_SOURCE_DIR%" rmdir /s /q "%MSI_SOURCE_DIR%"
 mkdir "%MSI_SOURCE_DIR%"
 
 :: Copy executables
-copy "dist\backupapp.exe" "%MSI_SOURCE_DIR%\"
-copy "dist\backup_service.exe" "%MSI_SOURCE_DIR%\"
-copy "dist\backup_core.exe" "%MSI_SOURCE_DIR%\"
+copy "..\dist\RoboBackupApp.exe" "%MSI_SOURCE_DIR%\"
 
 :: Copy assets
 if not exist "%MSI_SOURCE_DIR%\assets" mkdir "%MSI_SOURCE_DIR%\assets"
@@ -116,15 +102,36 @@ echo.
 echo Installer location: %DIST_DIR%\RoboBackupTool-%VERSION%.msi
 echo.
 echo The installer includes:
-echo - Main application (backupapp.exe)
-echo - Windows service (backup_service.exe)
-echo - Core backup engine (backup_core.exe)
+echo - Main application (RoboBackupApp.exe)
 echo - Configuration files
 echo - Start menu shortcuts
 echo - Desktop shortcut
-echo - Automatic service installation and startup
 echo.
-echo To install, run the MSI file as Administrator.
+echo To install, run the MSI file (per-user installation, no admin required).
+echo.
+echo IMPORTANT INSTALLATION NOTES:
+echo ========================================
+echo 1. Right-click the MSI file and select "Run as administrator"
+echo 2. If UAC prompt appears, click "Yes" to allow installation
+echo 3. For silent installation: msiexec /i RoboBackupTool-%VERSION%.msi /quiet
+echo 4. For enterprise deployment, use: msiexec /i RoboBackupTool-%VERSION%.msi /quiet /norestart
+echo.
+echo Common Issues:
+echo - "Admin error" despite being admin: Use "Run as administrator" context menu
+echo - UAC blocking: Ensure UAC is enabled and click "Yes" when prompted
+echo - Group Policy restrictions: Contact IT administrator
+echo.
+echo IMPORTANT INSTALLATION NOTES:
+echo ========================================
+echo 1. Right-click the MSI file and select "Run as administrator"
+echo 2. If UAC prompt appears, click "Yes" to allow installation
+echo 3. For silent installation: msiexec /i RoboBackupTool-%VERSION%.msi /quiet
+echo 4. For enterprise deployment, use: msiexec /i RoboBackupTool-%VERSION%.msi /quiet /norestart
+echo.
+echo Common Issues:
+echo - "Admin error" despite being admin: Use "Run as administrator" context menu
+echo - UAC blocking: Ensure UAC is enabled and click "Yes" when prompted
+echo - Group Policy restrictions: Contact IT administrator
 echo.
 
 :: Clean up temporary files
