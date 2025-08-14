@@ -72,23 +72,19 @@ def is_admin():
 
 
 def print_usage():
-    """Print usage information for the unified executable"""
-    print("\nRoboBackup Tool - Unified Backup Solution")
-    print("=========================================")
+    """Print usage information for the GUI application"""
+    print("\nRoboBackup Tool - Windows Backup Solution v1.0.0")
+    print("================================================")
     print("\nUsage:")
     print("  RoboBackup.exe                    Start GUI application (default)")
-    print("  RoboBackup.exe service            Run as service")
-    print("  RoboBackup.exe install            Install Windows Service")
-    print("  RoboBackup.exe start              Start Windows Service")
-    print("  RoboBackup.exe stop               Stop Windows Service")
-    print("  RoboBackup.exe remove             Remove Windows Service")
-    print("  RoboBackup.exe --standalone        Run service in standalone mode")
     print("  RoboBackup.exe help               Show this help")
-    print("\nService Commands:")
-    print("  install, update, remove, start, stop, restart, debug")
-    print("\nNote: Service commands require administrator privileges")
-    if not is_admin():
-        print("WARNING: Currently not running as administrator!")
+    print("\nFeatures:")
+    print("  • Manual backup execution")
+    print("  • Robocopy integration") 
+    print("  • Network drive mapping")
+    print("  • Encrypted credential storage")
+    print("  • Comprehensive logging")
+    print("\nNote: Service functionality will be available in v1.1.0")
 
 
 def main():
@@ -113,56 +109,13 @@ def main():
         # Check for updates (GUI dialog will show if updates are available)
         update_result = check_for_updates(logger)
         
-        # Determine run mode based on command line arguments
+        # Determine run mode based on command line arguments  
         if len(sys.argv) > 1:
             command = sys.argv[1].lower()
             
-            # Windows Service commands
-            if command in ["install", "update", "remove", "start", "stop", "restart", "debug"]:
-                logger.info(f"Executing Windows Service command: {command}")
-                
-                # Check admin privileges for service commands
-                if not is_admin():
-                    logger.error("Administrator privileges required for service commands")
-                    print("\nERROR: Administrator privileges required!")
-                    print("Please run the command prompt as Administrator and try again.")
-                    print("Or right-click on RoboBackup.exe and select 'Run as administrator'")
-                    sys.exit(1)
-                
-                try:
-                    import backup_service
-                    backup_service.run_as_service()
-                    logger.info(f"Service command '{command}' completed successfully")
-                except Exception as e:
-                    log_exception(logger, f"Failed to execute service command '{command}'")
-                    print(f"\nService operation failed: {e}")
-                    sys.exit(1)
-                    
-            elif command == "service":
-                logger.info("Starting in service mode")
-                try:
-                    import backup_service
-                    if hasattr(backup_service, 'run_as_service'):
-                        backup_service.run_as_service()
-                    else:
-                        backup_service.main()
-                except Exception as e:
-                    log_exception(logger, "Failed to start service")
-                    sys.exit(1)
-                    
-            elif command in ["--standalone"]:
-                logger.info("Starting service in standalone mode")
-                try:
-                    import backup_service
-                    backup_service.run_standalone()
-                except Exception as e:
-                    log_exception(logger, "Failed to start standalone service")
-                    sys.exit(1)
-                    
-            elif command in ["--help", "-h", "help"]:
+            if command in ["--help", "-h", "help"]:
                 print_usage()
                 sys.exit(0)
-                
             else:
                 logger.warning(f"Unknown command: {command}")
                 print_usage()

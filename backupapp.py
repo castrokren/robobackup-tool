@@ -1835,22 +1835,34 @@ class BackupApp:
                     dest_pwd = f.decrypt(encrypted_pwd).decode()
                     self.audit_logger.log_event("CREDENTIAL_DECRYPT", "Decrypted destination credentials", user_ip)
             
-            cmd = ["robocopy", f'"{effective_source}"', f'"{effective_dest}"'] + flags.split() + ["/LOG:" + log_file, "/TEE"]
+            # Build robocopy command properly
+            cmd = ["robocopy", effective_source, effective_dest]
+            cmd.extend(flags.split())
+            cmd.extend([f"/LOG:{log_file}", "/TEE"])
             
             self.log_message(f"Executing: {' '.join(cmd)}", 'debug')
             self.audit_logger.log_event("BACKUP_EXECUTE", f"Executing robocopy command", user_ip)
             
-            result = subprocess.run(" ".join(cmd), capture_output=True, text=True, shell=True)
+            # Execute robocopy without shell=True to avoid quote issues, hide command window
+            result = subprocess.run(cmd, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            
+            # Check robocopy exit codes (0-8 are success, >8 are errors)
+            exit_code = result.returncode
+            if exit_code <= 8:
+                success = True
+                self.log_message(f"Backup completed successfully (exit code: {exit_code})", 'success')
+                self.audit_logger.log_event("BACKUP_COMPLETE", f"Backup completed successfully (exit code: {exit_code})", user_ip)
+            else:
+                success = False
+                self.log_message(f"Backup failed with exit code: {exit_code}", 'error')
+                self.audit_logger.log_event("BACKUP_ERROR", f"Backup failed with exit code: {exit_code}", user_ip)
             
             if result.stdout:
                 self.log_message("Robocopy output:\n" + result.stdout, 'info')
             if result.stderr:
                 self.log_message("Robocopy errors:\n" + result.stderr, 'error')
-                self.audit_logger.log_event("BACKUP_ERROR", f"Robocopy errors: {result.stderr}", user_ip)
-            
-            success = True
-            self.log_message("Backup completed successfully.", 'success')
-            self.audit_logger.log_event("BACKUP_COMPLETE", "Backup completed successfully", user_ip)
+                if not success:  # Only log stderr as error if backup actually failed
+                    self.audit_logger.log_event("BACKUP_ERROR", f"Robocopy errors: {result.stderr}", user_ip)
             
             if not self.minimized_to_tray:
                 messagebox.showinfo("Backup Completed", "Backup finished successfully.")
@@ -2987,7 +2999,7 @@ class SessionManager:
 
 class SecureUpdateChecker:
     def __init__(self):
-        self.version_file = os.path.join(os.getcwd(), 'version.txt')
+        self.version_file = os.path.join(os.getcwd(), 'version_info.txt')
         self.current_version = self.get_current_version()
         self.public_key_file = os.path.join(os.getcwd(), 'config', 'public_key.pem')
         self.logger = None
@@ -3088,11 +3100,17 @@ class SecureUpdateChecker:
         try:
             if os.path.exists(self.version_file):
                 with open(self.version_file, 'r') as f:
-                    return f.read().strip()
-            return "1.0.0"  # Default version if file doesn't exist
+                    for line in f:
+                        if 'FileVersion' in line:
+                            # Extract version from VSVersionInfo format
+                            import re
+                            match = re.search(r"'(\d+\.\d+\.\d+\.\d+)'", line)
+                            if match:
+                                return match.group(1)
+            return "1.0.0.0"  # Default version if file doesn't exist
         except Exception as e:
             self.log_message(f"Error reading version: {str(e)}", 'error')
-            return "1.0.0"
+            return "1.0.0.0"
 
 class SecureSMBHandler:
     def __init__(self):

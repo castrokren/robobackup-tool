@@ -119,7 +119,7 @@ echo     echo You can access it from:
 echo     echo - Start Menu ^> RoboBackup Tool
 echo     echo - Desktop shortcut
 echo     echo.
-echo     echo The backup service is now running in the background.
+echo     echo The GUI backup application is ready to use.
 echo     echo.
 echo ^) else ^(
 echo     echo.

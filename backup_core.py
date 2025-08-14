@@ -184,11 +184,11 @@ def run_backup(
             log_filename = f"robocopy_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             log_file = os.path.join(log_dir, log_filename)
             
-            # Build robocopy command
+            # Build robocopy command properly
             cmd = [
                 "robocopy",
-                f'"{effective_source}"',
-                f'"{effective_dest}"',
+                effective_source,
+                effective_dest,
                 *flags.split(),
                 f"/LOG:{log_file}",
                 "/TEE"
@@ -197,14 +197,14 @@ def run_backup(
             logger.info(f"Executing robocopy command")
             logger.debug(f"Full command: {' '.join(cmd)}")
             
-            # Run robocopy
+            # Run robocopy without shell=True to avoid quote issues, hide command window
             start_time = datetime.now()
             result = subprocess.run(
-                " ".join(cmd), 
+                cmd, 
                 capture_output=True, 
                 text=True, 
-                shell=True,
-                timeout=3600  # 1 hour timeout
+                timeout=3600,  # 1 hour timeout
+                creationflags=subprocess.CREATE_NO_WINDOW
             )
             duration = datetime.now() - start_time
             

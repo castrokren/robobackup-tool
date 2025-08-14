@@ -27,7 +27,7 @@ echo.
 echo Copying application files...
 
 :: Copy main executable
-copy "%SOURCE_DIR%\RoboBackupApp.exe" "%PORTABLE_DIR%\"
+copy "%SOURCE_DIR%\backupapp.exe" "%PORTABLE_DIR%\"
 
 :: Copy assets directory
 if exist "%SOURCE_DIR%\assets" (
@@ -78,11 +78,11 @@ echo set "START_MENU=%%APPDATA%%\Microsoft\Windows\Start Menu\Programs\RoboBacku
 echo if not exist "%%START_MENU%%" mkdir "%%START_MENU%%"
 echo.
 echo echo Creating Start Menu shortcut...
-echo powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut\('%%START_MENU%%\RoboBackup Tool.lnk'\); $Shortcut.TargetPath = '%%INSTALL_DIR%%\RoboBackupApp.exe'; $Shortcut.WorkingDirectory = '%%INSTALL_DIR%%'; $Shortcut.Description = 'RoboBackup Tool - Professional Windows Backup Solution'; $Shortcut.Save\(\)"
+echo powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut\('%%START_MENU%%\RoboBackup Tool.lnk'\); $Shortcut.TargetPath = '%%INSTALL_DIR%%\backupapp.exe'; $Shortcut.WorkingDirectory = '%%INSTALL_DIR%%'; $Shortcut.Description = 'RoboBackup Tool - Professional Windows Backup Solution v1.0.0'; $Shortcut.Save\(\)"
 echo.
 echo :: Create Desktop shortcut
 echo echo Creating Desktop shortcut...
-echo powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut\('%%USERPROFILE%%\Desktop\RoboBackup Tool.lnk'\); $Shortcut.TargetPath = '%%INSTALL_DIR%%\RoboBackupApp.exe'; $Shortcut.WorkingDirectory = '%%INSTALL_DIR%%'; $Shortcut.Description = 'RoboBackup Tool - Professional Windows Backup Solution'; $Shortcut.Save\(\)"
+echo powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut\('%%USERPROFILE%%\Desktop\RoboBackup Tool.lnk'\); $Shortcut.TargetPath = '%%INSTALL_DIR%%\backupapp.exe'; $Shortcut.WorkingDirectory = '%%INSTALL_DIR%%'; $Shortcut.Description = 'RoboBackup Tool - Professional Windows Backup Solution v1.0.0'; $Shortcut.Save\(\)"
 echo.
 echo echo.
 echo echo ========================================
@@ -161,6 +161,7 @@ echo - **Per-user installation** - Installs to your user profile only
 echo - **No admin rights required** - Works on restricted systems
 echo - **Portable** - Can be run from any location
 echo - **Easy uninstall** - Run `uninstall.bat` to remove
+echo - **GUI-focused** - Manual backup operations (service functionality in v1.1.0)
 echo.
 echo ## Installation Location
 echo.

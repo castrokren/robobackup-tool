@@ -49,10 +49,13 @@ This package contains everything needed to deploy RoboBackup Tool in an enterpri
 ## Enterprise Features
 - Silent installation support
 - Group Policy deployment ready
-- Windows Service installation
 - Automatic privilege elevation
 - Comprehensive logging
 - SCCM/Intune compatible
+
+## Note
+- Service functionality will be available in v1.1.0
+- This v1.0.0 release focuses on GUI backup operations
 
 ## Support
 For technical support or questions:
