@@ -35,13 +35,7 @@ Our mission is to provide a robust, user-friendly backup solution that:
   - Log viewing and filtering
   - Backup scheduling interface
 
-#### 3. **backup_service.py** - The Automation
-- **Purpose**: Windows service implementation for automated operations
-- **Key Features**:
-  - Background service operation
-  - Scheduled backup execution
-  - Service lifecycle management
-  - Event logging integration
+<!-- backup_service.py will be introduced in v1.1.0; omitted from v1.0.0 documentation -->
 
 ### Technology Stack
 

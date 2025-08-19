@@ -61,16 +61,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Main application built successfully" -ForegroundColor Green
 
-# Build service executable
-Write-Host "Building service executable..." -ForegroundColor Yellow
-$ServiceSource = Join-Path $ProjectRoot "backup_service.py"
-$ServiceResult = & pyinstaller --onefile --console --icon="$MainAppIcon" --name="backup_service" "$ServiceSource" 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to build service executable!" -ForegroundColor Red
-    Write-Host $ServiceResult -ForegroundColor Red
-    exit 1
-}
-Write-Host "Service executable built successfully" -ForegroundColor Green
+# Service executable is planned for v1.1.0 and is not built in v1.0.0
 
 # Build core module
 Write-Host "Building core module..." -ForegroundColor Yellow
@@ -92,7 +83,6 @@ New-Item -ItemType Directory -Path $MsiSourceDir | Out-Null
 
 # Copy executables
 Copy-Item (Join-Path $DistDir "backupapp.exe") $MsiSourceDir
-Copy-Item (Join-Path $DistDir "backup_service.exe") $MsiSourceDir
 Copy-Item (Join-Path $DistDir "backup_core.exe") $MsiSourceDir
 
 # Copy assets

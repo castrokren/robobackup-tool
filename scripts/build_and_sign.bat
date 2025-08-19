@@ -34,31 +34,26 @@ if not exist "%CERT_FILE%" (
 
 echo Certificate ready: %CERT_FILE%
 
-:: Build MSI installer
+:: Build PyInstaller EXE (no MSI)
 echo.
 echo ========================================
-echo Building MSI Installer
+echo Building PyInstaller Executables
 echo ========================================
 
 cd ..
-cd installers
-call "build-msi.bat"
+python setup.py
 
 if %errorlevel% neq 0 (
-    echo ERROR: Failed to build MSI installer!
+    echo ERROR: Build failed!
     pause
     exit /b 1
 )
 
-echo MSI installer built successfully!
-
-:: Sign all executables and MSI
 echo.
 echo ========================================
-echo Signing Executables and MSI
+echo Signing Executables
 echo ========================================
-
-cd ..
+echo.
 cd scripts
 call "sign_executables.bat"
 
@@ -70,14 +65,11 @@ if %errorlevel% neq 0 (
 
 echo.
 echo ========================================
-echo Build and Sign Complete!
+echo Build and Sign Complete (EXE only)
 echo ========================================
 echo.
 echo Files created and signed:
 echo - dist\backupapp.exe
-echo - dist\backup_service.exe  
-echo - dist\backup_core.exe
-echo - dist\RoboBackupTool-1.0.0.0.msi
 echo.
 echo All files are now signed and ready for distribution!
 echo Users will not see "Unknown Publisher" warnings.

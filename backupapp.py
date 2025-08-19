@@ -1269,7 +1269,15 @@ class BackupApp:
         self.status_var = tk.StringVar()
         self.status_var.set("Ready")
         self.status_label = ttk.Label(self.status_frame, textvariable=self.status_var, anchor=tk.W)
-        self.status_label.pack(fill=tk.X)
+        self.status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        # Version label on the right
+        try:
+            checker = SecureUpdateChecker()
+            current_version = checker.get_current_version()
+        except Exception:
+            current_version = "2.0.0.0"
+        self.version_label = ttk.Label(self.status_frame, text=f"Data Sync Tool v{current_version}", anchor=tk.E)
+        self.version_label.pack(side=tk.RIGHT, padx=(0, 8))
 
     def test_source_connection(self):
         path = self.source_entry.get().strip()
@@ -2053,191 +2061,34 @@ class BackupApp:
                 
             # Log that we're running as Administrator
             self.log_message("Running as Administrator - proceeding with service installation", 'info')
-                
-            # Find the backup service script
-            possible_paths = []
             
-            # For PyInstaller frozen executables, check the temporary extraction directory first
-            if getattr(sys, 'frozen', False):
-                import tempfile
-                temp_dir = tempfile.gettempdir()
-                self.log_message(f"Checking PyInstaller temp directory: {temp_dir}", 'info')
-                
-                # Look for _MEI* directories (PyInstaller temp dirs)
-                me_dirs = [item for item in os.listdir(temp_dir) if item.startswith('_MEI')]
-                self.log_message(f"Found PyInstaller temp dirs: {me_dirs}", 'info')
-                
-                for me_dir_name in me_dirs:
-                    me_dir = os.path.join(temp_dir, me_dir_name)
-                    py_script_temp = os.path.join(me_dir, "backup_service.py")
-                    self.log_message(f"Checking: {py_script_temp}", 'info')
-                    
-                    if os.path.exists(py_script_temp):
-                        possible_paths.append(py_script_temp)
-                        self.log_message(f"Found backup_service.py in PyInstaller temp dir: {py_script_temp}", 'info')
-                        break
-                    else:
-                        self.log_message(f"backup_service.py not found in: {me_dir}", 'info')
+            # Use the current executable as the service
+            service_exe = sys.executable
+            self.log_message(f"Using current executable as service: {service_exe}", 'info')
             
-            # Add other possible paths
-            possible_paths.extend([
-                # Python script (development or source install)
-                os.path.join(os.getcwd(), "backup_service.py"),
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "backup_service.py"),
-                os.path.join(os.path.dirname(sys.executable), "backup_service.py"),
-                os.path.join(os.path.dirname(os.path.dirname(sys.executable)), "backup_service.py"),
-                "backup_service.py",
-                # Executable (packaged PyInstaller build)
-                os.path.join(os.getcwd(), "backup_service.exe"),
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "backup_service.exe"),
-                os.path.join(os.path.dirname(sys.executable), "backup_service.exe"),
-                os.path.join(os.path.dirname(os.path.dirname(sys.executable)), "backup_service.exe"),
-                "backup_service.exe"
-            ])
-            
-            service_script = None
-            for path in possible_paths:
-                if os.path.exists(path):
-                    service_script = path
-                    break
-                    
-            if not service_script:
-                # Try to copy the file from the source directory
-                source_dir = os.path.dirname(os.path.dirname(sys.executable))
-                source_script_py = os.path.join(source_dir, "backup_service.py")
-                source_script_exe = os.path.join(source_dir, "backup_service.exe")
-                
-                import shutil
-                if os.path.exists(source_script_exe):
-                    try:
-                        shutil.copy2(source_script_exe, os.getcwd())
-                        service_script = os.path.join(os.getcwd(), "backup_service.exe")
-                        self.log_message(f"Copied backup_service.exe from source to current directory", 'info')
-                    except Exception as e:
-                        self.log_message(f"Failed to copy backup_service.exe: {str(e)}", 'error')
-                        return False
-                elif os.path.exists(source_script_py):
-                    try:
-                        shutil.copy2(source_script_py, os.getcwd())
-                        service_script = os.path.join(os.getcwd(), "backup_service.py")
-                        self.log_message(f"Copied backup_service.py from source to current directory", 'info')
-                    except Exception as e:
-                        self.log_message(f"Failed to copy backup_service.py: {str(e)}", 'error')
-                        return False
-                else:
-                    self.log_message(f"Backup service script not found. Tried paths: {possible_paths}", 'error')
-                    return False
-                
-            self.log_message(f"Found backup service script at: {service_script}", 'info')
-            
-            # Get the directory where the service script is located
-            service_dir = os.path.dirname(os.path.abspath(service_script))
-            
-            # Get the full path to Python executable
-            # Check if we're running from PyInstaller
-            if getattr(sys, 'frozen', False):
-                # Running from PyInstaller, need to find the actual Python interpreter
-                python_exe = "python"
-            else:
-                # Running from source, use sys.executable
-                python_exe = sys.executable
-            
-            # Install the service from the correct directory
-            if service_script.lower().endswith('.exe'):
-                cmd = [service_script, 'install']
-                display_cmd = f"{service_script} install"
-            else:
-                # Use the current Python interpreter
-                cmd = [sys.executable, service_script, 'install']
-                display_cmd = f"{sys.executable} {service_script} install"
-            
-            self.log_message(f"Installing service using: {display_cmd}", 'info')
-            self.log_message(f"Working directory: {service_dir}", 'info')
-            self.log_message(f"Current working directory: {os.getcwd()}", 'info')
-            self.log_message(f"Python executable: {sys.executable}", 'info')
-            self.log_message(f"Service script: {service_script}", 'info')
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                shell=True,
-                cwd=service_dir
+            # Install the service using embedded NSSM
+            try:
+                from utils.service_utils import install_service_with_nssm
+            except Exception as e:
+                self.log_message(f"NSSM helper not available: {str(e)}", 'error')
+                return False
+
+            self.log_message("Attempting to install service with NSSM...", 'info')
+            ok = install_service_with_nssm(
+                service_name="RoboBackupService",
+                service_executable=service_exe,
+                service_args=None,  # No additional args needed
+                display_name="RoboBackup Tool Service",
+                description="Automated backups using RoboBackup Tool",
+                auto_start=True,
+                delayed_auto_start=True,
             )
-            
-            # Log the command results for debugging
-            self.log_message(f"Service installation return code: {result.returncode}", 'info')
-            if result.stdout:
-                self.log_message(f"Service installation stdout: {result.stdout}", 'info')
-            if result.stderr:
-                self.log_message(f"Service installation stderr: {result.stderr}", 'info')
-            
-            # Check both return code and stderr for errors
-            if result.returncode == 0:
-                # Also check if there are any error messages in stdout
-                error_in_output = any(error in result.stdout.lower() for error in ['error', 'denied', 'failed', 'access is denied'])
-                if not error_in_output:
-                    self.log_message("Backup service installed successfully", 'success')
-                    
-                    # Configure the service to start automatically
-                    config_result = subprocess.run([
-                        "sc", "config", "RoboBackupService", "start=auto"
-                    ], capture_output=True, text=True, shell=True)
-                    
-                    if config_result.returncode != 0:
-                        self.log_message(f"Warning: Could not configure service startup type: {config_result.stderr}", 'warning')
-                    
-                    # Start the service
-                    if service_script.lower().endswith('.exe'):
-                        start_cmd = [service_script, 'start']
-                    else:
-                        # Use the current Python interpreter
-                        start_cmd = [sys.executable, service_script, 'start']
-                    start_result = subprocess.run(
-                        start_cmd,
-                        capture_output=True,
-                        text=True,
-                        shell=True,
-                        cwd=service_dir
-                    )
-                    
-                    if start_result.returncode == 0:
-                        self.log_message("Backup service started successfully", 'success')
-                        return True
-                    else:
-                        self.log_message(f"Service installed but failed to start: {start_result.stderr}", 'warning')
-                        return True
-                else:
-                    self.log_message(f"Service installation failed: {result.stdout}", 'error')
-                    return False
+
+            if ok:
+                self.log_message("Backup service installed and started successfully (NSSM)", 'success')
+                return True
             else:
-                # Check for specific error messages
-                error_output = result.stderr if result.stderr else result.stdout
-                if "Access is denied" in error_output or "Access is denied" in str(result.stdout):
-                    self.log_message(f"Service installation failed: Access denied. Please ensure you're running as Administrator.", 'error')
-                elif "already exists" in error_output:
-                    self.log_message("Service already exists, attempting to start...", 'info')
-                    # Try to start the existing service
-                    if service_script.lower().endswith('.exe'):
-                        start_cmd = [service_script, 'start']
-                    else:
-                        # Use the current Python interpreter
-                        start_cmd = [sys.executable, service_script, 'start']
-                    start_result = subprocess.run(
-                        start_cmd,
-                        capture_output=True,
-                        text=True,
-                        shell=True,
-                        cwd=service_dir
-                    )
-                    
-                    if start_result.returncode == 0:
-                        self.log_message("Existing backup service started successfully", 'success')
-                        return True
-                    else:
-                        self.log_message(f"Failed to start existing service: {start_result.stderr}", 'error')
-                        return False
-                else:
-                    self.log_message(f"Failed to install service. Return code: {result.returncode}, Error: {error_output}", 'error')
+                self.log_message("Failed to install service via NSSM", 'error')
                 return False
                 
         except Exception as e:
@@ -3098,19 +2949,37 @@ class SecureUpdateChecker:
     def get_current_version(self):
         """Get current application version"""
         try:
-            if os.path.exists(self.version_file):
-                with open(self.version_file, 'r') as f:
-                    for line in f:
-                        if 'FileVersion' in line:
-                            # Extract version from VSVersionInfo format
-                            import re
-                            match = re.search(r"'(\d+\.\d+\.\d+\.\d+)'", line)
-                            if match:
-                                return match.group(1)
-            return "1.0.0.0"  # Default version if file doesn't exist
+            # 1) Try reading embedded version from the running executable (frozen)
+            try:
+                if getattr(sys, 'frozen', False):
+                    import win32api
+                    exe_path = sys.executable
+                    info = win32api.GetFileVersionInfo(exe_path, '\\')
+                    ms = info['FileVersionMS']
+                    ls = info['FileVersionLS']
+                    version_tuple = ((ms >> 16) & 0xffff, ms & 0xffff, (ls >> 16) & 0xffff, ls & 0xffff)
+                    return ".".join(str(x) for x in version_tuple)
+            except Exception:
+                pass
+
+            # 2) Fallback to version_info.txt if present in working directory
+            try:
+                if os.path.exists(self.version_file):
+                    with open(self.version_file, 'r') as f:
+                        for line in f:
+                            if 'FileVersion' in line:
+                                import re
+                                match = re.search(r"'(\d+\.\d+\.\d+\.\d+)'", line)
+                                if match:
+                                    return match.group(1)
+            except Exception:
+                pass
+
+            # 3) Final fallback
+            return "2.0.0.0"
         except Exception as e:
             self.log_message(f"Error reading version: {str(e)}", 'error')
-            return "1.0.0.0"
+            return "2.0.0.0"
 
 class SecureSMBHandler:
     def __init__(self):
@@ -3699,13 +3568,92 @@ def run_gui():
     import tkinter as tk
     root = tk.Tk()
     app = BackupApp(root)
+    # Set application window title with name and version
+    try:
+        checker = SecureUpdateChecker()
+        current_version = checker.get_current_version()
+    except Exception:
+        current_version = "2.0.0.0"
+    try:
+        root.title(f"Data Sync Tool v{current_version}")
+    except Exception:
+        pass
     root.mainloop()
 
 if __name__ == "__main__":
     try:
-        root = tk.Tk()
-        app = BackupApp(root)
-        root.mainloop()
+        # Check for CLI arguments
+        if len(sys.argv) > 1:
+            command = sys.argv[1].lower()
+            
+            if command in ["--install-service", "install-service"]:
+                print("Installing RoboBackup Service...")
+                try:
+                    # Create a minimal app instance for service installation
+                    root = tk.Tk()
+                    root.withdraw()  # Hide the window
+                    app = BackupApp(root)
+                    
+                    if app.install_backup_service():
+                        print("OK Service installed")
+                        sys.exit(0)
+                    else:
+                        print("FAIL Service installation failed")
+                        sys.exit(1)
+                except Exception as e:
+                    print(f"FAIL Service installation error: {str(e)}")
+                    sys.exit(1)
+            elif command in ["--help", "-h", "help"]:
+                print("\nRoboBackup Tool - Windows Backup Solution")
+                print("==========================================")
+                print("\nUsage:")
+                print("  backupapp.exe                    Start GUI application (default)")
+                print("  backupapp.exe --install-service  Install Windows service")
+                print("  backupapp.exe --help             Show this help")
+                print("\nService Management:")
+                print("  Use the 'Manage Service' button in the GUI for full service control")
+                sys.exit(0)
+            else:
+                print(f"Unknown command: {command}")
+                print("Use --help for usage information")
+                sys.exit(1)
+        else:
+            # No arguments - start GUI mode
+            # First-run auto-install of the Windows service (silent best-effort)
+            try:
+                if getattr(sys, 'frozen', False):
+                    from utils.service_utils import service_exists, install_service_with_nssm, elevate_nssm_install, is_admin
+                    service_name = "RoboBackupService"
+                    if not service_exists(service_name):
+                        target_exe = sys.executable
+                        if is_admin():
+                            install_service_with_nssm(
+                                service_name=service_name,
+                                service_executable=target_exe,
+                                service_args=None,
+                                display_name="RoboBackup Tool Service",
+                                description="Automated backups using RoboBackup Tool",
+                                auto_start=True,
+                                delayed_auto_start=True,
+                            )
+                        else:
+                            elevate_nssm_install(service_name, target_exe, None)
+            except Exception:
+                pass
+
+            root = tk.Tk()
+            app = BackupApp(root)
+            # Set application window title with name and version
+            try:
+                checker = SecureUpdateChecker()
+                current_version = checker.get_current_version()
+            except Exception:
+                current_version = "2.0.0.0"
+            try:
+                root.title(f"Data Sync Tool v{current_version}")
+            except Exception:
+                pass
+            root.mainloop()
     except KeyboardInterrupt:
         print("\nApplication interrupted by user")
     except Exception as e:

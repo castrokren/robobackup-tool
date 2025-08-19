@@ -26,9 +26,7 @@
                       Name="backup_core.exe" 
                       Source="$(var.SourceDir)\backup_core.exe" />
                 
-                <File Id="BackupServiceExe" 
-                      Name="backup_service.exe" 
-                      Source="$(var.SourceDir)\backup_service.exe" />
+                <!-- backup_service.exe will be added in v1.1.0; excluded from v1.0.0 packaging -->
                 
                 <!-- Documentation -->
                 <File Id="ReadmeMd" 

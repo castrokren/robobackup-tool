@@ -10,7 +10,7 @@ import shutil
 
 def build_executables():
     """Build GUI executable using PyInstaller"""
-    print("Building RoboBackup GUI application with PyInstaller...")
+    print("Building Data Sync Tool GUI application with PyInstaller...")
     
     # Clean previous builds
     if os.path.exists("build"):
@@ -32,7 +32,8 @@ def build_main_app():
         sys.executable, "-m", "PyInstaller",
         "--onefile",
         "--windowed",  # No console window for GUI
-        "--name=backupapp"
+        "--version-file=pyinstaller_version.txt",
+        "--name=DataSyncTool"
     ]
     
     # Add icon if it exists
@@ -43,6 +44,7 @@ def build_main_app():
     cmd.extend([
         "--add-data=assets;assets",
         "--add-data=config;config",
+        "--add-data=resources;resources",
         "--add-data=utils;utils",
         "backupapp.py"
     ])
@@ -52,9 +54,9 @@ def build_main_app():
         print("OK Main application built successfully")
         
         # Copy executable to current directory
-        exe_path = os.path.join("dist", "backupapp.exe")
+        exe_path = os.path.join("dist", "DataSyncTool.exe")
         if os.path.exists(exe_path):
-            shutil.copy2(exe_path, "backupapp.exe")
+            shutil.copy2(exe_path, "DataSyncTool.exe")
             print("OK Main executable copied to current directory")
             return True
         
@@ -71,7 +73,7 @@ def build_main_app():
 
 def main():
     """Main build process"""
-    print("=== RoboBackup Tool v1.0.0 Build Process ===\n")
+    print("=== Data Sync Tool v2.0.0 Build Process ===\n")
     
     # Build GUI executable
     if not build_executables():
@@ -80,9 +82,9 @@ def main():
     
     print("\n=== Build Complete ===")
     print("OK GUI executable created:")
-    print("   - backupapp.exe (Main GUI application)")
+    print("   - DataSyncTool.exe (Main GUI application)")
     print()
-    print("Features included in v1.0.0:")
+    print("Features included in v2.0.0:")
     print("   • Manual backup execution")
     print("   • Robocopy integration")
     print("   • Network drive mapping") 

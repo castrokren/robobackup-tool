@@ -78,10 +78,9 @@ build-msi.bat
 
 ### Method 3: Manual Build Process
 
-1. **Build Executables**:
+1. **Build Executables (v1.0.0)**:
    ```cmd
    pyinstaller --onefile --windowed --icon="assets\robot_copier.ico" --name="backupapp" backupapp.py
-   pyinstaller --onefile --console --icon="assets\robot_copier.ico" --name="backup_service" backup_service.py
    pyinstaller --onefile --console --icon="assets\robot_copier.ico" --name="backup_core" backup_core.py
    ```
 
@@ -109,11 +108,8 @@ build-msi.bat
 
 ### Windows Service Integration
 
-The MSI installer automatically:
-- Installs the RoboBackup service as a Windows service
-- Configures the service to start automatically
-- Sets proper service dependencies
-- Handles service removal during uninstallation
+Planned for v1.1.0. Not included in v1.0.0.
+<!-- Service installation and configuration details will apply starting with v1.1.0 -->
 
 ### Installation Components
 
@@ -121,10 +117,7 @@ The MSI installer automatically:
    - GUI application for configuration and monitoring
    - Installed to `%ProgramFiles%\RoboBackup Tool\`
 
-2. **Windows Service** (`backup_service.exe`)
-   - Background service for automated backups
-   - Installed and configured as Windows service
-   - Runs under LocalSystem account
+2. **Windows Service** (`backup_service.exe`) — Planned for v1.1.0, not included in v1.0.0
 
 3. **Core Engine** (`backup_core.exe`)
    - Core backup functionality

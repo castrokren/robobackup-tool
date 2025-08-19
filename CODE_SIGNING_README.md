@@ -55,9 +55,8 @@ pvk2pfx.exe -pvk "RoboBackupTool_CodeSigning.pvk" -spc "RoboBackupTool_CodeSigni
 
 ### 2. Sign Individual Files
 ```bash
-# Sign executables
+# Sign executables (v1.0.0)
 signtool.exe sign /f "RoboBackupTool_CodeSigning.pfx" /p "RoboBackup2024!" /t "http://timestamp.digicert.com" /d "RoboBackup Tool" /du "https://github.com/castrokren/robobackup-tool" "dist\backupapp.exe"
-signtool.exe sign /f "RoboBackupTool_CodeSigning.pfx" /p "RoboBackup2024!" /t "http://timestamp.digicert.com" /d "RoboBackup Tool" /du "https://github.com/castrokren/robobackup-tool" "dist\backup_service.exe"
 signtool.exe sign /f "RoboBackupTool_CodeSigning.pfx" /p "RoboBackup2024!" /t "http://timestamp.digicert.com" /d "RoboBackup Tool" /du "https://github.com/castrokren/robobackup-tool" "dist\backup_core.exe"
 
 # Sign MSI installer
@@ -66,9 +65,8 @@ signtool.exe sign /f "RoboBackupTool_CodeSigning.pfx" /p "RoboBackup2024!" /t "h
 
 ### 3. Verify Signatures
 ```bash
-# Verify each file
+# Verify each file (v1.0.0)
 signtool.exe verify /pa "dist\backupapp.exe"
-signtool.exe verify /pa "dist\backup_service.exe"
 signtool.exe verify /pa "dist\backup_core.exe"
 signtool.exe verify /pa "dist\RoboBackupTool-1.0.0.0.msi"
 ```
@@ -132,7 +130,6 @@ scripts/
 
 dist/
 ├── backupapp.exe                  # Signed main application
-├── backup_service.exe             # Signed service executable
 ├── backup_core.exe                # Signed core module
 └── RoboBackupTool-1.0.0.0.msi    # Signed MSI installer
 ```
